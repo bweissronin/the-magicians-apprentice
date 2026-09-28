@@ -12,7 +12,7 @@ import { clay } from './style.js';
 export const ALDRIC_LETTER = [
   'My dear apprentice — if you are reading this, I have gone where I swore I never would: into the Veil itself.',
   'Veyra, my first apprentice, tore it trying to hold every element at once. She is still inside, and she is still tearing. Someone must hold the thread while it can be mended.',
-  'My five towers were bound to me. When I step through, they will fall — here, and in the four realms beyond the mist at the valley’s edge.',
+  'My tower and its four sanctums were bound to me. When I step through, they will fall — here, and in the four realms beyond the mist at the valley’s edge.',
   'Rebuild them. Every stone you raise pins the Veil back down and takes weight off the thread I am holding. Quill knows where everything is, and will tell you so at length.',
   'Be brave. Be patient. Mostly be patient. — A.',
 ];

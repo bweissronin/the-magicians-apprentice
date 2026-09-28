@@ -83,7 +83,7 @@ export class QuestLog {
     $('questlog-title').textContent = 'Quest Log';
     const tabs = `<div class="qx-tabs" role="tablist">
       <button class="qx-tab ${this.tab === 'story' ? 'on' : ''}" data-tab="story">Story <small>${chapterLabel(chapterOf(s))}</small></button>
-      <button class="qx-tab ${this.tab === 'towers' ? 'on' : ''}" data-tab="towers">Towers <small>${stability(s)} / 25 seals${readyN ? ` · <b class="qx-ready">${readyN} ready to raise</b>` : ''}</small></button></div>`;
+      <button class="qx-tab ${this.tab === 'towers' ? 'on' : ''}" data-tab="towers">Tower &amp; Sanctums <small>${stability(s)} / 25 seals${readyN ? ` · <b class="qx-ready">${readyN} ready to raise</b>` : ''}</small></button></div>`;
     $('questlog-body').innerHTML = tabs + (this.tab === 'story' ? this.storyTab(towers) : this.towersTab(towers));
     this.el.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => { this.tab = b.dataset.tab; this.render(); this.game.audio.play('ui'); }; });
     this.el.querySelectorAll('[data-tower]').forEach((b) => { b.onclick = () => { this.tab = 'towers'; this.tower = b.dataset.tower; this.render(); this.game.audio.play('ui'); }; });
@@ -119,8 +119,8 @@ export class QuestLog {
       <div class="qx-chapters">${chapters}</div>
       <div>
         <div class="qx-seals"><b>${seals}</b> of 25 seals hold the Veil<div class="qx-bar gold"><i style="width:${(seals / 25) * 100}%"></i></div>
-          <small>Every Arcane floor and every sanctum stage adds a seal.</small></div>
-        <div class="qx-sect">Towers</div>
+          <small>Your tower’s first five floors and every sanctum stage each add a seal.</small></div>
+        <div class="qx-sect">Tower &amp; sanctums</div>
         <div class="qx-strips">${strip}</div>
         <details class="qx-letter"><summary>Aldric’s letter</summary>${ALDRIC_LETTER.map((l) => `<p>${l}</p>`).join('')}</details>
       </div></div>`;
@@ -134,9 +134,9 @@ export class QuestLog {
     const list = towers.map((x) => `<button class="qx-tw ${x.id === t.id ? 'on' : ''} ${x.open ? '' : 'dim'}" data-tower="${x.id}" style="--c:${x.color}">
       <span class="qx-glyph">${x.open ? x.glyph : '🔒'}</span>
       <span><b>${x.name}</b><small>${x.where}</small><i class="qx-mini"><i style="width:${(x.built / x.steps.length) * 100}%"></i></i></span>
-      <em>${x.done ? '✓' : x.ready ? '<b class="qx-ready">Ready</b>' : x.open ? `${x.built}/${x.steps.length}` : 'Sealed'}</em></button>`).join('');
-    const stepRow = (st, i) => {
-      const state = i < t.built ? 'done' : i === t.built ? 'next' : 'later';
+      <em>${x.done ? '✓' : x.ready ? '<b class="qx-ready">Ready</b>' : x.open ? `${x.built}/${x.steps.length}` : 'Locked'}</em></button>`).join('');
+    const stepRow = (st, i, locked = false) => {
+      const state = locked ? 'later' : i < t.built ? 'done' : i === t.built ? 'next' : 'later';
       if (state !== 'next') {
         return `<li class="qx-step ${state}"><span class="qx-num">${state === 'done' ? '✓' : i + 1}</span><div><b>${st.name}</b>${state === 'done' ? '' : `<small>${Object.entries(st.cost).map(([k, v]) => `${v} ${RESOURCES[k].name}`).join(' · ')}</small>`}</div></li>`;
       }
@@ -155,12 +155,12 @@ export class QuestLog {
         <small class="qx-where">${t.buildAt}</small></div></li>`;
     };
     const body = !t.open
-      ? `<div class="qx-sealed"><b>🔒 ${t.where} is sealed — ${t.lockWhy}</b><span>${t.hint}.</span></div><ol class="qx-steps">${t.steps.map((st, i) => stepRow(st, i + 99)).join('')}</ol>`
-      : `<ol class="qx-steps">${t.steps.map(stepRow).join('')}</ol>`;
+      ? `<div class="qx-sealed"><b>🔒 ${t.where} is locked — ${t.lockWhy}</b><span>${t.hint}.</span></div><ol class="qx-steps">${t.steps.map((st, i) => stepRow(st, i, true)).join('')}</ol>`
+      : `<ol class="qx-steps">${t.steps.map((st, i) => stepRow(st, i)).join('')}</ol>`;
     return `<div class="qx-towers">
       <div class="qx-twlist">${list}</div>
       <div class="qx-twpage" style="--c:${t.color}">
-        <div class="qx-twhead"><span class="qx-big">${t.glyph}</span><div><h3>${t.name}</h3><small>${t.where} · ${t.done ? 'complete' : `${t.built} of ${t.steps.length} raised`}</small></div></div>
+        <div class="qx-twhead"><span class="qx-big">${t.glyph}</span><div><h3>${t.name}</h3><small>${t.where} · ${t.done ? 'complete' : `${t.built} of ${t.steps.length} ${t.id === 'arcane' ? 'floors' : 'stages'} raised`}</small></div></div>
         <div class="qx-bar" style="--c:${t.color}"><i style="width:${(t.built / t.steps.length) * 100}%"></i></div>
         <p class="qx-lore">${t.steadies}</p>
         ${body}

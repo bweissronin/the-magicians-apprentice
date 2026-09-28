@@ -18,7 +18,7 @@ export class TouchControls {
         <button data-act="use" class="tb" aria-label="Interact or hold to harvest">E</button>
         <button data-act="jump" class="tb" aria-label="Jump">⤒</button>
         <button data-act="blink" class="tb sm" aria-label="Blink">➶</button>
-        <button data-act="target" class="tb sm" aria-label="Target next wisp">◎</button>
+        <button data-act="target" class="tb sm" aria-label="Target next foe">◎</button>
         <button data-act="dodge" class="tb sm" aria-label="Dodge">⤳</button>
       </div>
       <button class="tb menu" data-act="menu" aria-label="Pause menu">☰</button>`;

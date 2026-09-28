@@ -89,7 +89,7 @@ export class Mentor {
     if (!state.talkedToMentor || !state.story.letter) {
       return [
         'Hoo. HOO. You\'re awake — finally. Don\'t look at the tower. …You looked at the tower.',
-        'The master is gone. Walked into the Veil three nights ago, and every one of his towers fell down behind him. This one. The four beyond the bridges at the valley’s edge. All of them.',
+        'The master is gone. Walked into the Veil three nights ago, and his tower and every one of his sanctums fell down behind him. This one. The four beyond the bridges at the valley’s edge. All of them.',
         'He left you this. I\'ve been sitting on it. Not literally. Mostly not literally.',
         ...ALDRIC_LETTER.map((l) => `“${l}”`),
         'So. We rebuild. Timber from the trees, stone from the boulders — hold [E] near them. The plans are on the altar by the steps.',
@@ -116,7 +116,7 @@ export class Mentor {
     lines.push(seals < 25 ? `The Veil holds by ${seals} of its 25 seals. Every stone you set, the master carries a little less.` : 'All twenty-five seals hold. I can almost hear him humming.');
     if (ch === 6) {
       const left = Object.entries(GUARDIANS).filter(([id]) => !state.guardians.includes(id)).map(([, g]) => g.name);
-      if (left.length) lines.push(`Still squatting in the master's towers: ${left.join(', ')}. Bring every element you've got.`);
+      if (left.length) lines.push(`Still squatting in the master's sanctums: ${left.join(', ')}. Bring every element you've got.`);
     }
     const flavour = [
       'The master once tried to teach me Radiance. I set a curtain on fire. We don\'t talk about the curtain.',

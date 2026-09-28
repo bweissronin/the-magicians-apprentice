@@ -12,11 +12,11 @@ export const ELEMENTS = [
   { id: 'radiance', name: 'Radiance', key: 2, color: '#ffd36b', core: '#fff6d8', glyph: '☀', school: null,
     learn: 'Research it at the Spell Tome in your Study', how: 'Slower; leaves a pool of light. Spirits inside it turn solid; crystal eyes are dazzled.' },
   { id: 'earth', name: 'Earth', key: 3, color: '#dca468', core: '#f6dcb8', glyph: '⛰', school: 'geomancy',
-    learn: 'Reach Initiate rank in Geomancy', how: 'A heavy arcing stone. Breaks armour and ice of any kind and knocks foes down.' },
+    learn: 'Reach Initiate in Geomancy', how: 'A heavy arcing stone. Breaks armour and ice of any kind and knocks foes down.' },
   { id: 'frost', name: 'Frost', key: 4, color: '#8fe3ff', core: '#effbff', glyph: '❄', school: 'cryomancy',
-    learn: 'Reach Initiate rank in Cryomancy', how: 'Chills and slows; three hits freeze a foe solid. Arcane shatters the frozen.' },
+    learn: 'Reach Initiate in Cryomancy', how: 'Chills and slows; three hits freeze a foe solid. Arcane shatters the frozen.' },
   { id: 'fire', name: 'Fire', key: 5, color: '#ff8a3c', core: '#ffe2b8', glyph: '🔥', school: 'pyromancy',
-    learn: 'Reach Initiate rank in Pyromancy', how: 'Burns through armour and ice. Frost then Fire on stone: thermal shock.' },
+    learn: 'Reach Initiate in Pyromancy', how: 'Burns through armour and ice. Frost then Fire on stone: thermal shock.' },
 ];
 export const EL = Object.fromEntries(ELEMENTS.map((e) => [e.id, e]));
 

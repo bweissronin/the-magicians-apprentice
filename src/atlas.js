@@ -145,12 +145,12 @@ export class Atlas {
     const lands = [{ id: 'arcane', glyph: '✦', color: '#a792ff', name: 'The Arcane Tower', sub: `${s.floors} of ${TOWER_FLOORS.length} floors · ${s.shrines.length} of ${SHRINES.length} shrines`, pct: s.floors / TOWER_FLOORS.length }]
       .concat(SCHOOLS.map((d) => {
         const open = s.schoolUnlocked(d.id), st = s.sanctumStage(d.id);
-        return { id: d.id, glyph: d.glyph, color: d.color, name: d.realm, sub: open ? `${SANCTUMS[d.id].name.replace('The ', '')} · ${st} of 5` : `Sealed — ${s.gateBlock(d.id)}`, pct: st / 5, locked: !open };
+        return { id: d.id, glyph: d.glyph, color: d.color, name: d.realm, sub: open ? `${SANCTUMS[d.id].name.replace('The ', '')} · ${st} of 5` : `Locked — ${s.gateBlock(d.id)}`, pct: st / 5, locked: !open };
       }));
     const row = (l) => `<button class="atl-land ${l.locked ? 'locked' : ''}" data-realm="${l.id}" style="--c:${l.color}">
       <span class="atl-lg">${l.locked ? '🔒' : l.glyph}</span><span><b>${l.name}</b><small>${l.sub}</small><i class="atl-mini"><i style="width:${(l.pct * 100).toFixed(0)}%"></i></i></span></button>`;
     const key = (sym, text) => `<li><span class="atl-sym">${sym}</span>${text}</li>`;
-    return `<div class="atl-stab"><div><b>${seals}</b> / 25 seals</div><small>Every tower floor, sanctum stage and guardian adds a seal to the Veil.</small><i class="atl-mini big"><i style="width:${(seals / 25 * 100).toFixed(0)}%"></i></i></div>
+    return `<div class="atl-stab"><div><b>${seals}</b> / 25 seals</div><small>Your tower’s first five floors and every sanctum stage each add a seal.</small><i class="atl-mini big"><i style="width:${(seals / 25 * 100).toFixed(0)}%"></i></i></div>
       <div class="atl-sect">The lands</div><div class="atl-lands">${lands.map(row).join('')}</div>
       <div class="atl-sect">Legend</div>
       <ul class="atl-legend">
@@ -183,7 +183,7 @@ export class Atlas {
     const guard = Object.entries(GUARDIANS).find(([, gd]) => gd.realm === id);
     if (!open) {
       return `${back}<div class="atl-page" style="--c:${d.color}"><h3>${d.glyph} ${d.realm}</h3><div class="atl-sub">${d.name}</div>
-        <div class="atl-sealed"><b>🔒 Sealed — ${s.gateBlock(id)}</b><span>${d.needs.hint}.</span></div>
+        <div class="atl-sealed"><b>🔒 Locked — ${s.gateBlock(id)}</b><span>${d.needs.hint}.</span></div>
         <p>${d.blurb}</p>
         <div class="atl-sect">What waits inside</div>
         <ul class="atl-list">
@@ -260,8 +260,8 @@ export class Atlas {
     // Realms.
     for (const d of SCHOOLS) {
       const P = PLACE[d.id], open = s.schoolUnlocked(d.id), st = s.sanctumStage(d.id);
-      A.push(`<g class="atl-hit atl-shape" data-realm="${d.id}"><title>${d.realm} — ${open ? `${SANCTUMS[d.id].name}, ${st} of 5 stages` : `sealed: ${s.gateBlock(d.id)}`}</title><path d="${blob(P.x, P.y, P.r, 0.15, P.sx, P.sy, P.seed)}" fill="transparent" stroke="none"/>`);
-      if (!open) A.push(`<path d="${blob(P.x, P.y, P.r + 4, 0.15, P.sx, P.sy, P.seed)}" fill="url(#afog)" opacity=".5"/><g transform="translate(${P.x},${P.y - 30}) scale(1.4)"><rect x="-9" y="-3" width="18" height="14" rx="3" fill="#f0c34a" stroke="#2a1d3a" stroke-width="1.6"/><path d="M-5.5,-3 v-4 a5.5,5.5 0 0 1 11,0 v4" fill="none" stroke="#2a1d3a" stroke-width="2.6"/></g><text x="${P.x}" y="${P.y}" class="al t">${d.realm.replace('The ', '')}</text><text x="${P.x}" y="${P.y + 15}" class="al s">Sealed · ${s.gateBlock(d.id)}</text>`);
+      A.push(`<g class="atl-hit atl-shape" data-realm="${d.id}"><title>${d.realm} — ${open ? `${SANCTUMS[d.id].name}, ${st} of 5 stages` : `locked: ${s.gateBlock(d.id)}`}</title><path d="${blob(P.x, P.y, P.r, 0.15, P.sx, P.sy, P.seed)}" fill="transparent" stroke="none"/>`);
+      if (!open) A.push(`<path d="${blob(P.x, P.y, P.r + 4, 0.15, P.sx, P.sy, P.seed)}" fill="url(#afog)" opacity=".5"/><g transform="translate(${P.x},${P.y - 30}) scale(1.4)"><rect x="-9" y="-3" width="18" height="14" rx="3" fill="#f0c34a" stroke="#2a1d3a" stroke-width="1.6"/><path d="M-5.5,-3 v-4 a5.5,5.5 0 0 1 11,0 v4" fill="none" stroke="#2a1d3a" stroke-width="2.6"/></g><text x="${P.x}" y="${P.y}" class="al t">${d.realm.replace('The ', '')}</text><text x="${P.x}" y="${P.y + 15}" class="al s">Locked · ${s.gateBlock(d.id)}</text>`);
       A.push('</g>');
       if (open) {
         for (const [lid, lx, lz] of REALM_LANDMARKS[d.id]) {

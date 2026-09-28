@@ -493,7 +493,7 @@ class Game {
     s.story.spireCalled = true;
     setTimeout(() => this.ui.banner('The Convergence', chapterLabel(7), s.guardians.length >= 4
       ? 'The Spire is raised and the Veil pulls taut. Veyra waits above it — step to the tower door and ascend.'
-      : `The Spire is raised — but ${4 - s.guardians.length} guardian${s.guardians.length === 3 ? '' : 's'} still hold Aldric's other towers.`, 8000), 1200);
+      : `The Spire is raised — but ${4 - s.guardians.length} guardian${s.guardians.length === 3 ? '' : 's'} still hold Aldric's sanctums.`, 8000), 1200);
   }
 
   // ---------------- Guardians & the Convergence ----------------
@@ -557,16 +557,16 @@ class Game {
       this.ui.showDialogue('Master Aldric', [
         'Well. That took rather longer than I planned.',
         'I held the thread, and you mended the cloth around it. Veyra is free — of the Veil, and of herself. She will need a long rest, and a great deal of tea.',
-        'Five towers, apprentice. Five. I built them over sixty years and you raised them again in a season.',
+        'A tower and four sanctums, apprentice. I built them over sixty years and you raised them again in a season.',
         'Here — this is yours now. A Magician should carry a staff of their own.',
       ], () => {
         this.dlgFixed = false;
         this.mode = 'ending';
         this.ui.hide();
-        $('ending-text').textContent = `Master Aldric bows deeply and hands you his staff. After ${formatTime(s.playTime)} of toil and wonder, five towers stand, the Veil holds — and the valley has a new Magician.`;
+        $('ending-text').textContent = `Master Aldric bows deeply and hands you his staff. After ${formatTime(s.playTime)} of toil and wonder, the tower and its four sanctums stand, the Veil holds — and the valley has a new Magician.`;
         $('ending-stats').innerHTML = `
-          <div>Towers raised<b>${Math.min(5, s.floors) + SCHOOLS.reduce((n, d) => n + s.sanctumStage(d.id), 0)} / 25 seals</b></div><div>Haunts cleared<b>${s.haunts.length} / 16</b></div>
-          <div>Guardians defeated<b>${s.guardians.length} / 4</b></div><div>Creatures studied<b>${Object.values(s.bestiary).filter((b) => b.kills > 0).length}</b></div>
+          <div>Seals set<b>${Math.min(5, s.floors) + SCHOOLS.reduce((n, d) => n + s.sanctumStage(d.id), 0)} / 25 seals</b></div><div>Haunts lifted<b>${s.haunts.length} / 16</b></div>
+          <div>Guardians defeated<b>${s.guardians.length} / 4</b></div><div>Creatures catalogued<b>${Object.values(s.bestiary).filter((b) => b.kills > 0).length}</b></div>
           <div>Resources gathered<b>${s.stats.gathered}</b></div><div>Foes banished<b>${s.stats.wisps}</b></div>`;
         $('ending').classList.add('show');
         // Back on the ground for free play, with Aldric beside his tower.
@@ -954,7 +954,7 @@ class Game {
     this.boss?.onKill?.(w);
     if (info.perkNow) {
       this.audio.play('ascend');
-      setTimeout(() => this.ui.banner(`${def.perk.name}`, `Studied: ${def.name}`, `Bestiary perk — ${def.perk.desc}`, 5500), 600);
+      setTimeout(() => this.ui.banner(`${def.perk.name}`, `Learned: ${def.name}`, `Bestiary perk — ${def.perk.desc}`, 5500), 600);
     }
     // Legion of Bone (Necromancy sanctum boon): every banished foe leaves Grave Bone.
     if (s.hasBoon('necromancy')) s.addItem('bone', 1);
@@ -1015,7 +1015,7 @@ class Game {
         this.player.shake = 0.6;
       }, 3600);
     } else if (m > 0) {
-      setTimeout(() => this.ui.toast(`${def.glyph} ${def.name} rank: ${MASTERY_RANKS[m]}`, def.color, `${3 - m} more to Master`), 1200);
+      setTimeout(() => this.ui.toast(`${def.glyph} ${def.name} mastery: ${MASTERY_RANKS[m]}`, def.color, `${3 - m} more to Master`), 1200);
     }
   }
 

@@ -45,7 +45,7 @@ function schoolData(s, id) {
     ],
     beyond: [
       { text: `Raise ${sanc.name}`, have: stage, of: sanc.stages.length },
-      guard && { text: `Drive out ${guard[1].name}`, done: s.guardians.includes(guard[0]), sub: stage < 4 ? 'Waits beyond the fourth stage' : '' },
+      guard && { text: `Defeat ${guard[1].name}`, done: s.guardians.includes(guard[0]), sub: stage < 4 ? 'Waits beyond the fourth stage' : '' },
       { text: 'Hear the Echo Stones', have: echoes, of: 4 },
     ].filter(Boolean),
     rewards: [
@@ -81,7 +81,7 @@ export function renderSchools(game, pick) {
   const tabs = all.map((o) => `
     <button class="sc-tab ${o.id === cur.id ? 'on' : ''} ${o.locked ? 'locked' : ''}" data-school="${o.id}" style="--c:${o.color}" aria-pressed="${o.id === cur.id}">
       ${ring(o.locked ? 0 : o.pct, o.color, o.locked ? '🔒' : o.glyph)}
-      <span class="sc-tname">${o.name}</span><span class="sc-trank">${o.locked ? 'Sealed' : MASTERY_RANKS[o.rank]}</span>
+      <span class="sc-tname">${o.name}</span><span class="sc-trank">${o.locked ? 'Locked' : MASTERY_RANKS[o.rank]}</span>
     </button>`).join('');
   const o = cur;
   const ladder = o.ladder.map(([title, unlock], i) => `
@@ -97,7 +97,7 @@ export function renderSchools(game, pick) {
         <div class="sc-title"><h3>${o.name}</h3><div class="sc-realm">${o.realm}</div></div>
         <ol class="sc-ladder" style="--n:${o.ladder.length}">${ladder}</ol>
       </header>
-      ${o.locked ? `<div class="sc-sealed"><b>🔒 Gate sealed — ${o.lockWhy}</b><span>${o.hint}</span></div>` : ''}
+      ${o.locked ? `<div class="sc-sealed"><b>🔒 The bridge is down — ${o.lockWhy}</b><span>${o.hint}</span></div>` : ''}
       <p class="sc-blurb">${o.blurb}</p>
       <div class="sc-cols">
         <div><h4>${o.stepsTitle}</h4>${o.stepsNote ? `<div class="sc-note">${o.stepsNote}</div>` : ''}<ul class="sc-steps">${o.steps.map(row).join('')}</ul></div>

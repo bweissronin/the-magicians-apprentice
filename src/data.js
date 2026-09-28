@@ -182,7 +182,7 @@ export const SCHOOLS = [
   {
     id: 'necromancy', name: 'Necromancy', realm: 'The Hollow Crypt', color: '#7dff9b', glyph: '☠', level: 2, chapter: 2,
     needs: { key: 'radiance', label: 'Radiance', hint: 'Research Radiance at the Spell Tome in your Study' },
-    blurb: 'A moonlit graveyard where the dead do not rest. Weigh souls, piece together the ossuary and put the restless to sleep.',
+    blurb: 'A moonlit graveyard where the dead do not rest. Weigh souls, piece together the ossuary and lift its haunts.',
     puzzles: [
       { id: 'scales', name: 'The Soul Scales', puzzle: 'scales', difficulty: 1, xp: 220, color: 0x7dff9b,
         intro: 'Place every bone on a pan. The scales only still when both sides weigh the same.' },
@@ -195,7 +195,7 @@ export const SCHOOLS = [
   },
   {
     id: 'geomancy', name: 'Geomancy', realm: 'The Sundered Deep', color: '#dca468', glyph: '⛰', level: 3, chapter: 3,
-    needs: { key: 'sight', label: 'Spirit Sight', hint: 'Reach Initiate rank in Necromancy to learn Spirit Sight' },
+    needs: { key: 'sight', label: 'Spirit Sight', hint: 'Reach Initiate in Necromancy to learn Spirit Sight' },
     blurb: 'A mountain hollowed into a cavern of crystal and fungus-light. Roll the boulders, align the ore seams, and still the trembling earth.',
     puzzles: [
       { id: 'boulders', name: 'The Boulder Run', puzzle: 'boulders', difficulty: 1, xp: 260, color: 0xdca468,
@@ -208,7 +208,7 @@ export const SCHOOLS = [
   },
   {
     id: 'cryomancy', name: 'Cryomancy', realm: 'The Glacial Hollow', color: '#8fe3ff', glyph: '❄', level: 5, chapter: 4,
-    needs: { key: 'earth', label: 'Earth', hint: 'Reach Initiate rank in Geomancy to learn the Earth attunement' },
+    needs: { key: 'earth', label: 'Earth', hint: 'Reach Initiate in Geomancy to learn the Earth attunement' },
     blurb: 'An aurora-lit ice field where every step slides. Guide a rune across the frozen lake and bend starlight through crystal.',
     puzzles: [
       { id: 'iceslide', name: 'The Frozen Lake', puzzle: 'iceslide', difficulty: 1, xp: 360, color: 0x8fe3ff,
@@ -221,7 +221,7 @@ export const SCHOOLS = [
   },
   {
     id: 'pyromancy', name: 'Pyromancy', realm: 'The Ember Caldera', color: '#ff8a3c', glyph: '🔥', level: 6, chapter: 5,
-    needs: { key: 'frost', label: 'Frost', hint: 'Reach Initiate rank in Cryomancy to learn the Frost attunement' },
+    needs: { key: 'frost', label: 'Frost', hint: 'Reach Initiate in Cryomancy to learn the Frost attunement' },
     blurb: 'A living volcano of basalt and lava. Channel flame through the conduits and restack the ember forge — without stepping in the magma.',
     puzzles: [
       { id: 'conduit', name: 'The Flame Conduit', puzzle: 'conduit', difficulty: 1, xp: 300, color: 0xff8a3c,

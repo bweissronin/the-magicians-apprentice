@@ -186,8 +186,8 @@ export class Haunts {
     this.active = null;
     g.audio.play('ascend');
     g.player.shake = 0.6;
-    g.ui.banner(`${h.cfg.name} Cleared`, `${h.realm.def.glyph} The haunt is lifted`, 'Its lanterns are lit for good, its harvest grows double, and its Echo Stone will speak to you now.', 6500);
-    s.addXP(260, `${h.cfg.name} cleared`);
+    g.ui.banner(`${h.cfg.name}`, `${h.realm.def.glyph} The haunt is lifted`, 'Its lanterns are lit for good, its harvest grows double, and its Echo Stone will speak to you now.', 6500);
+    s.addXP(260, `${h.cfg.name} lifted`);
     // A Dread's trophy: a little of everything this realm's creature carries.
     const drop = CREATURES[h.cfg.kind].drop;
     if (drop) s.addItem(drop, 3);

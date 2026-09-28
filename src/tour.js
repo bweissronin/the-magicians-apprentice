@@ -116,7 +116,7 @@ export function valleyTour(game, onDone) {
     { pos: new THREE.Vector3(20, h(0, 0) + 20, 26), look: new THREE.Vector3(0, h(0, 0) + 3, 0), title: 'Aldric\'s Tower', sub: 'In ruins', text: 'It fell the night he walked into the Veil. You will raise it again.' },
     (() => { // the Hollow's bridge, running out over the mist
       const from = passPoint('cryomancy', PASS_LIP - 26, -14), to = passPoint('cryomancy', PASS_END);
-      return { pos: new THREE.Vector3(from.x, h(from.x, from.z) + 16, from.z), look: new THREE.Vector3(to.x, h(passPoint('cryomancy', 135).x, passPoint('cryomancy', 135).z), to.z), title: 'The Four Bridges', sub: 'Four realms', text: 'At each edge of the valley a bridge runs out into the mist. Beyond each, one of Aldric\'s towers lies fallen too.' };
+      return { pos: new THREE.Vector3(from.x, h(from.x, from.z) + 16, from.z), look: new THREE.Vector3(to.x, h(passPoint('cryomancy', 135).x, passPoint('cryomancy', 135).z), to.z), title: 'The Four Bridges', sub: 'Four realms', text: 'At each edge of the valley a bridge runs out into the mist. Beyond each, one of Aldric\'s sanctums lies fallen too.' };
     })(),
   ];
   for (const sh of [...SHRINES].sort((a, b) => Math.atan2(a.x, -a.z) - Math.atan2(b.x, -b.z)).slice(0, 3)) {

@@ -166,7 +166,7 @@ export class Journal {
       <aside class="jb-side">
         <div class="jb-card"><h4>Weaknesses</h4><div class="jb-els">${els}</div></div>
         <div class="jb-card"><h4>Drops</h4>${drops}</div>
-        <div class="jb-card"><h4>Studied <span>${Math.min(b.kills, perk.at)} / ${perk.at}</span></h4><div class="jb-bar"><i style="width:${pct}%"></i></div>
+        <div class="jb-card"><h4>Learned <span>${Math.min(b.kills, perk.at)} / ${perk.at}</span></h4><div class="jb-bar"><i style="width:${pct}%"></i></div>
           <p>${got ? `<b>${perk.name}</b> — ${perk.desc}` : `<span class="jb-dim">Perk: ??? — banish ${perk.at - b.kills} more</span>`}</p>
           <p class="jb-dim">${b.ranks.elder ? `Elder: <b>${d.elder.name}</b> — ${d.elder.trait}` : 'Elder: not yet met'}${last ? ` · last seen in ${last}` : ''}</p></div>
         <button class="btn jb-track ${s.tracked === kind ? 'primary' : ''}" data-track="1">${s.tracked === kind ? '◆ Tracking' : '◇ Track this creature'}</button>

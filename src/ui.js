@@ -303,7 +303,7 @@ export class UI {
       const haunts = r.land.landmarks.filter((L) => s.haunts.includes(`${d.id}:${L.id}`)).length;
       const items = [
         ...d.puzzles.map((pz) => ({ text: `<b>${pz.name}</b>`, done: p.puzzles.includes(pz.id) })),
-        { text: `<b>Haunts</b> cleared ${haunts} / 4${p.trial ? '' : ' — the first is the trial'}`, done: p.trial },
+        { text: `<b>Haunts</b> lifted ${haunts} / 4${p.trial ? '' : ' — the first is the trial'}`, done: p.trial },
       ];
       const hv = g.haunts.active;
       if (hv) items.unshift({ text: `⚔ <b>${hv.cfg.name}</b> — ${hv.phase === 'dread' ? hv.cfg.dread : `wave ${hv.wave} of 3`}`, done: false });
@@ -313,7 +313,7 @@ export class UI {
       if (stage) {
         const rankOk = s.mastery(d.id) >= stage.rank, have = Math.min(s.inv[res], stage.cost[res]);
         items.push({ text: `<b>${stage.name}</b> ${s.sanctumStage(d.id) + 1}/${sanc.stages.length}`, done: false });
-        if (!rankOk) items.push({ text: `Reach <b>${MASTERY_RANKS[stage.rank]}</b> rank`, done: false });
+        if (!rankOk) items.push({ text: `Reach <b>${MASTERY_RANKS[stage.rank]}</b> in ${d.name}`, done: false });
         items.push({ text: `<b>${RESOURCES[res].name}</b> ${have} / ${stage.cost[res]}`, done: have >= stage.cost[res] });
         const corner = r.stations.find((st) => st.kind === 'sanctum');
         if (rankOk && s.canAfford(stage.cost)) target = { x: corner.x, z: corner.z - 2.2 };
@@ -588,7 +588,7 @@ export class UI {
       l.el.style.opacity = String(Math.min(1, (55 - d) / 15));
       if (l.extra?.gate) {
         const d = l.extra.gate.def;
-        const sub = this.state.schoolUnlocked(d.id) ? `${d.name} · ${this.state.masteryTitle(d.id)}` : `Sealed · level ${d.level}`;
+        const sub = this.state.schoolUnlocked(d.id) ? `${d.name} · ${this.state.masteryTitle(d.id)}` : `Locked · level ${d.level}`;
         const sm = l.el.querySelector('small');
         if (sm.textContent !== sub) sm.textContent = sub;
       } else if (l.extra) {
@@ -822,7 +822,7 @@ export class UI {
       const done = i < built, next = i === built;
       const costs = Object.entries(f.cost).map(([k, v]) => this.costChip(k, v, done)).join('');
       const rankOk = rank >= f.rank, guardOk = !f.guardian || s.guardians.includes(f.guardian);
-      const req = (f.rank ? `<span class="cost req ${done ? '' : rankOk ? 'ok' : 'no'}">${MASTERY_RANKS[f.rank]} rank</span>` : '')
+      const req = (f.rank ? `<span class="cost req ${done ? '' : rankOk ? 'ok' : 'no'}">${MASTERY_RANKS[f.rank]} mastery</span>` : '')
         + (f.guardian ? `<span class="cost req ${done ? '' : guardOk ? 'ok' : 'no'}">Defeat ${GUARDIANS[f.guardian].name}${guardOk ? ' ✓' : ''}</span>` : '');
       const can = next && rankOk && guardOk && s.canAfford(f.cost);
       const action = done ? '<span class="cost ok">Raised ✓</span>'
@@ -872,7 +872,7 @@ export class UI {
       </section>
       <section data-lg="spells"><h3>Spells</h3>${spells}</section>
       <section data-lg="combat"><h3>Combat</h3>
-        ${row(k('Tab'), 'Target next wisp', 'Cycle nearby foes')}
+        ${row(k('Tab'), 'Target next foe', 'Cycle nearby creatures')}
         ${row('<span class="lg-passive">auto</span>', 'Threat lock', 'Foes hunting you lock on by themselves')}
         ${row(k('Click'), 'Bolt the target', 'Bolts home in on a locked foe')}
         ${row(k('1') + '–' + k('5'), 'Attune your bolt', ELEMENTS.map((e) => `${e.glyph} ${e.name}${s.knows(e.id) ? '' : ' (locked)'}`).join(' · '))}
@@ -882,8 +882,8 @@ export class UI {
         ${row('Mouse up / down', 'Tilt camera')}
         ${row('Scroll wheel', 'Zoom in / out')}
         ${row(k('K'), 'Schools of Magic', 'Mastery of each school')}
-        ${row(k('J'), 'Quest log', 'Story and every tower')}
-        ${row(k('M'), 'World atlas', 'Every land; travel between towers')}
+        ${row(k('J'), 'Quest log', 'Story, your tower and every sanctum')}
+        ${row(k('M'), 'World atlas', 'Every land; travel between them')}
         ${row(k('I'), 'Room guide', 'What each room is for')}
         ${row(k('H'), 'Show / hide this legend')}
         ${row(k('Esc'), 'Pause, save, sound settings')}
