@@ -162,7 +162,7 @@ export class Atlas {
         ${key('<svg viewBox="-12 -12 24 24"><path d="M0,-7 L5,0 L0,7 L-5,0Z" fill="#8a7cff" stroke="#4a3520"/></svg>', 'Echo Stone heard')}
         ${key('<svg viewBox="-12 -12 24 24"><path d="M-10,4 L-6,-2 L-2,3 L2,-4 L6,2 L10,-3" stroke="#d84bff" stroke-width="5" fill="none" opacity=".45"/><path d="M-10,4 L-6,-2 L-2,3 L2,-4 L6,2 L10,-3" stroke="#ffb8ff" stroke-width="1.3" fill="none"/></svg>', 'Rift energy — the Veil torn round a land')}
         ${key('<svg viewBox="-12 -12 24 24"><path d="M-10,2 Q0,-6 10,2" stroke="#f0c34a" stroke-width="5" fill="none" opacity=".45"/><path d="M-10,2 Q0,-6 10,2" stroke="#fff0b0" stroke-width="1.3" fill="none"/></svg>', 'Healing — turns gold as the sanctum (or your tower) rises')}
-        ${key('<svg viewBox="-12 -12 24 24"><path d="M-11,3 L-3,-1 M3,-1 L11,3" stroke="#8c6b50" stroke-width="6" fill="none"/></svg>', 'Broken bridge — mends when the realm\'s gate opens')}
+        ${key('<svg viewBox="-12 -12 24 24"><path d="M-11,3 L-3,-1 M3,-1 L11,3" stroke="#8c6b50" stroke-width="6" fill="none"/></svg>', 'Broken bridge — that way is still locked')}
       </ul>`;
   }
 

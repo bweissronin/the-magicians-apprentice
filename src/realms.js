@@ -1,11 +1,11 @@
 import * as THREE from 'three';
-import { realmBridgehead } from './crossings.js';
+import { realmThreshold } from './crossings.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { Particles } from './particles.js';
 import { clay } from './style.js';
 import { fbm, smoothstep, lerp, mulberry32 } from './util.js';
 import { runeCircleTexture } from './textures.js';
-import { SCHOOLS, NODE_TYPES, SANCTUMS } from './data.js';
+import { SCHOOLS, NODE_TYPES, SANCTUMS, THRESHOLDS } from './data.js';
 import { Sanctum, SANCTUM_SITE, PLANS_POS, SANCTUM_DOOR_Z } from './sanctums.js';
 import { prop } from './assets.js';
 import { Land, WORLD_R } from './realmlands.js';
@@ -685,14 +685,14 @@ export class Realms {
       const moon = new THREE.Mesh(new THREE.CircleGeometry(14, 32), new THREE.MeshBasicMaterial({ color: theme.moon, fog: false }));
       moon.position.copy(sunDir).multiplyScalar(300); moon.lookAt(0, 0, 0); scene.add(moon);
     }
-    // The far end of the valley's bridge: a run of deck behind you, vanishing into fog.
-    const exit = realmBridgehead(def.color);
+    // The way home: the same mouth you came through in the valley (a mine, a cleft, a cave, a
+    // barrow), standing behind where you arrive with its hill around it.
+    const exit = realmThreshold(id, def.color);
     exit.position.set(ARRIVE.x, theme.heightAt(ARRIVE.x, ARRIVE.z + 5), ARRIVE.z + 5);
     scene.add(exit);
-    this.game.aoHidden.push(exit.userData.fog);
-    colliders.push({ x: ARRIVE.x - 2.8, z: ARRIVE.z + 4.5, radius: 0.75 }, { x: ARRIVE.x + 2.8, z: ARRIVE.z + 4.5, radius: 0.75 });
+    for (const c of exit.userData.cols) colliders.push({ x: ARRIVE.x + c.x, z: ARRIVE.z + 5 + c.z, radius: c.radius });
     // Puzzle altars.
-    const stations = [{ kind: 'exit', x: ARRIVE.x, z: ARRIVE.z + 6, r: 2.4, label: 'Cross back to the valley', sub: 'Walk on into the fog' }];
+    const stations = [{ kind: 'exit', x: ARRIVE.x, z: ARRIVE.z + 3.5, r: 2.6, label: `${THRESHOLDS[id].title} — back to the valley`, sub: 'Walk on in' }];
     const altars = def.puzzles.map((p, i) => {
       const spot = ALTAR_SPOTS[i];
       const a = altar(def.color, theme.altarTops[i]);
@@ -707,7 +707,7 @@ export class Realms {
       scene, rand, add, heightAt: theme.heightAt, fx, color: def.color,
       collide: (x, z, radius) => colliders.push({ x, z, radius }),
       aoHide: (o) => this.game.aoHidden.push(o),
-      reserved: (x, z, pad) => reserved(x, z, pad) || Math.hypot(x - ARRIVE.x, z - ARRIVE.z - 5) < 6 || ALTAR_SPOTS.some((p) => Math.hypot(x - p.x, z - p.z) < 3.5),
+      reserved: (x, z, pad) => reserved(x, z, pad) || (Math.abs(x - ARRIVE.x) < 17 && z > ARRIVE.z - 1 && z < ARRIVE.z + 27) || ALTAR_SPOTS.some((p) => Math.hypot(x - p.x, z - p.z) < 3.5),
       hazardHit: api.hazardHit,
     });
     if (theme.graves) theme.graves.push(...land.ctx.graves);
@@ -818,7 +818,6 @@ export class Realms {
     r.sky.position.copy(player.pos);
     r.sun.position.copy(player.pos).addScaledVector(r.sunDir, 90);
     r.sun.target.position.copy(player.pos);
-    r.exit.userData.fog.material.uniforms.uTime.value = t;
     const solved = this.game.state.school(r.id).puzzles;
     r.altars.forEach((a) => {
       const done = solved.includes(a.puzzle.id);

@@ -89,7 +89,7 @@ export class Mentor {
     if (!state.talkedToMentor || !state.story.letter) {
       return [
         'Hoo. HOO. You\'re awake — finally. Don\'t look at the tower. …You looked at the tower.',
-        'The master is gone. Walked into the Veil three nights ago, and his tower and every one of his sanctums fell down behind him. This one. The four beyond the bridges at the valley’s edge. All of them.',
+        'The master is gone. Walked into the Veil three nights ago, and his tower and every one of his sanctums fell down behind him. This one. The four beyond the mountains at the valley’s edge. All of them.',
         'He left you this. I\'ve been sitting on it. Not literally. Mostly not literally.',
         ...ALDRIC_LETTER.map((l) => `“${l}”`),
         'So. We rebuild. Timber from the trees, stone from the boulders — hold [E] near them. The plans are on the altar by the steps.',

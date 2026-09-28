@@ -37,7 +37,7 @@ import { UI } from './ui.js';
 import { PuzzleUI } from './puzzles.js';
 import { AudioSys } from './audio.js';
 import { GameState } from './state.js';
-import { RESOURCES, TOWER_FLOORS, SHRINES, ALTAR_POS, PLAYER_START, MAX_LEVEL, NODE_TYPES, ROOMS, POTIONS, SCHOOLS, MASTERY_RANKS, GATE_POS, SANCTUMS, PASS_END } from './data.js';
+import { RESOURCES, TOWER_FLOORS, SHRINES, ALTAR_POS, PLAYER_START, MAX_LEVEL, NODE_TYPES, ROOMS, POTIONS, SCHOOLS, MASTERY_RANKS, GATE_POS, SANCTUMS, THRESHOLDS, THRESHOLD_IN, PASS_LIP } from './data.js';
 import { formatTime, damp } from './util.js';
 import { CREATURES, EL, ELEMENTS, neededFor, RANK } from './bestiary.js';
 import { Journal } from './journal.js';
@@ -150,6 +150,14 @@ class Game {
     this.autosave = 0;
     this.clock = new THREE.Clock();
     this.player.place(PLAYER_START.x, PLAYER_START.z);
+    // Walking into a way (valley side or realm side), the camera draws in behind you.
+    this.player.boomCap = () => {
+      if (this.inside || this.tour) return null;
+      const p = this.player.pos;
+      if (this.realm) { const a = this.realm.arrive; return Math.abs(p.x - a.x) < 4 && p.z > a.z - 2 ? 5.5 : null; }
+      const w = this.gates.inWay(p);
+      return w && w.s > PASS_LIP - 7 ? 5.5 : null;
+    };
     this.player.surfaces = [(x, z) => this.shrines.surfaceAt(x, z), (x, z) => this.magic.pillarAt(x, z, this.player.pos.y), (x, z) => this.spellWorld.floeAt(x, z), (x, z) => this.gates.surfaceAt(x, z)];
     this.player.cameraBlockers = () => (this.inside ? [] : this.realm ? this.realm.sanctum.blockers
       : this.state.floors && !this.inside ? [{ x: 0, z: 0, r: 8.4, top: this.tower.topWorld }] : []);
@@ -614,8 +622,9 @@ class Game {
     const gate = this.gates.nearest(p);
     if (gate) {
       const d = gate.def;
-      if (!s.schoolUnlocked(d.id)) return { kind: 'none', label: `${d.glyph} The bridge to ${d.realm} is broken`, sub: `It will mend when the way opens — ${s.gateBlock(d.id)}`, locked: true };
-      return { kind: 'gate', gate, label: `${d.glyph} The bridge to ${d.realm}`, sub: `Walk out into the mist (or press E) · ${d.name} · ${s.masteryTitle(d.id)}` };
+      const w = THRESHOLDS[d.id];
+      if (!s.schoolUnlocked(d.id)) return { kind: 'none', label: `${d.glyph} ${w.locked}`, sub: `It opens when you're ready — ${s.gateBlock(d.id)}`, locked: true };
+      return { kind: 'gate', gate, label: `${d.glyph} ${w.title} — to ${d.realm}`, sub: `${w.enter} (or press E) · ${d.name} · ${s.masteryTitle(d.id)}` };
     }
     if (s.floors >= TOWER_FLOORS.length && s.guardians.length >= 4 && !s.finale && Math.hypot(p.x - TOWER_DOOR.x, p.z - TOWER_DOOR.z) < 2.8 && !this.input.down('ShiftLeft')) {
       return { kind: 'finale', label: 'Ascend to face the Unraveller', sub: 'Veyra waits above the Spire · hold Shift to enter the tower instead' };
@@ -667,12 +676,13 @@ class Game {
     if (this.transitioning || this.inside || this.cinematic) return;
     const p = this.player.pos;
     if (this.realm) {
+      // Into the realm's own mouth (it stands 5 m behind where you arrive) and through.
       const a = this.realm.arrive;
-      if (p.z > a.z + 11 && Math.abs(p.x - a.x) < 4) this.exitRealm();
+      if (p.z > a.z + 5 + THRESHOLD_IN && Math.abs(p.x - a.x) < 3) this.exitRealm();
       return;
     }
-    const b = this.gates.onBridge(p);
-    if (b && b.c.open && b.s > PASS_END - 4) this.enterRealm(b.c.id);
+    const c = this.gates.through(p);
+    if (c) this.enterRealm(c.id);
   }
 
   handleInteraction(dt) {
@@ -854,7 +864,7 @@ class Game {
       }
       this.ui.banner(realm.def.realm, `${realm.def.glyph} ${realm.def.name} · ${this.state.masteryTitle(id)}`, p.puzzles.length + (p.trial ? 1 : 0) ? '' : realm.def.blurb, 5000);
       this.input.pressedKeys.clear();
-    });
+    }, at === 'portal' ? THRESHOLDS[id].fade : '#000');
   }
 
   teardownRealm() {
@@ -882,6 +892,7 @@ class Game {
   exitRealm(dest = null) {
     if (this.transitioning || !this.realm) return;
     this.audio.play('blink');
+    const tint = dest ? '#000' : THRESHOLDS[this.realm.id].fade;
     this.fadeThen(() => {
       const gate = this.gates.list.find((g) => g.def.id === this.realm.id);
       this.realm = this.realms.active = null;
@@ -890,14 +901,14 @@ class Game {
       this.player.traction = 1;
       if (this.outsideCam) { this.player.camDist = this.outsideCam.dist; this.player.camPitch = this.outsideCam.pitch; }
       if (dest) this.player.place(dest.x, dest.z, (dest.face ?? 0) - Math.PI);
-      else { const at = this.gates.arrival(gate.id); this.player.place(at.x, at.z, at.face + Math.PI); } // out on the bridge, facing home (place() takes the camera's yaw)
+      else { const at = this.gates.arrival(gate.id); this.player.place(at.x, at.z, at.face + Math.PI); } // just out of the mouth, facing home (place() takes the camera's yaw)
       this.particles = this.mainParticles;
       this.magic.setArena(this.scene, this.mainParticles);
       this.setRenderScene(this.scene);
       this.ui.leaveRealm();
       this.input.pressedKeys.clear();
       this.save();
-    });
+    }, tint);
   }
 
   useRealmStation(st) {
@@ -1085,8 +1096,10 @@ class Game {
     }), 900);
   }
 
-  fadeThen(fn) {
+  // Fade out, run fn, fade back in. `tint` colours it (the dark of a mine, the white of the ice).
+  fadeThen(fn, tint = '#000') {
     const f = $('fade');
+    f.style.background = tint;
     f.classList.add('on');
     this.transitioning = true;
     setTimeout(() => { fn(); f.classList.remove('on'); this.transitioning = false; }, 450);

@@ -246,8 +246,13 @@ export class Player {
     // Ease the boom out while a target is locked so player and wisp both fit on screen.
     const want = this.combatFocus ? Math.min(7, this.combatFocus.distanceTo(this.pos) * 0.35) : 0;
     this.combatZoom = damp(this.combatZoom ?? 0, want, 3, dt);
-    const cp = Math.cos(this.camPitch);
-    const offset = new THREE.Vector3(Math.sin(this.camYaw) * cp, Math.sin(this.camPitch), Math.cos(this.camYaw) * cp).multiplyScalar((this.camDist + this.combatZoom) * (portrait ? 1.3 : 1));
+    // In a tight place (a mine, a cave), the boom draws in close and low behind you, and eases back out.
+    const cap = this.boomCap?.();
+    const boom = (this.camDist + this.combatZoom) * (portrait ? 1.3 : 1);
+    this.boomLen = damp(this.boomLen ?? boom, cap ? Math.min(boom, cap) : boom, 5, dt);
+    this.boomPitch = damp(this.boomPitch ?? this.camPitch, cap ? Math.min(this.camPitch, 0.2) : this.camPitch, 5, dt);
+    const cp = Math.cos(this.boomPitch);
+    const offset = new THREE.Vector3(Math.sin(this.camYaw) * cp, Math.sin(this.boomPitch), Math.cos(this.camYaw) * cp).multiplyScalar(this.boomLen);
     // Over-the-shoulder offset.
     const right = new THREE.Vector3(Math.cos(this.camYaw), 0, -Math.sin(this.camYaw));
     let camPos = this.camTarget.clone().add(offset);

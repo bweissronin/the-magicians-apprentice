@@ -1,6 +1,6 @@
 import * as THREE from 'three';
-import { RESOURCES, SPELLS, TOWER_FLOORS, SHRINES, ALTAR_POS, MAX_LEVEL, POTIONS, SCHOOLS, MASTERY_RANKS, SANCTUMS } from './data.js';
-import { heightAt, WATER_LEVEL } from './world.js';
+import { RESOURCES, SPELLS, TOWER_FLOORS, SHRINES, ALTAR_POS, MAX_LEVEL, POTIONS, SCHOOLS, MASTERY_RANKS, SANCTUMS, THRESHOLDS } from './data.js';
+import { heightAt, WATER_LEVEL, nearWay } from './world.js';
 import { formatTime } from './util.js';
 import { CREATURES, ELEMENTS, EL, dropperOf, neededFor } from './bestiary.js';
 import { renderSchools } from './schoolsui.js';
@@ -170,7 +170,7 @@ export class UI {
     add('Quill', 'Aldric\'s owl', () => new THREE.Vector3(g.mentor.x, g.mentor.mesh.position.y + 3.2, g.mentor.z));
     add("Builder's Altar", 'Raise your tower', () => new THREE.Vector3(ALTAR_POS.x, heightAt(ALTAR_POS.x, ALTAR_POS.z) + 3.6, ALTAR_POS.z));
     g.gates.list.forEach((gt) => {
-      add(`${gt.def.glyph} ${gt.def.realm}`, '', () => new THREE.Vector3(gt.x, gt.arch.position.y + 7.4, gt.z), { gate: gt });
+      add(`${gt.def.glyph} ${gt.def.realm}`, THRESHOLDS[gt.id].title, () => new THREE.Vector3(gt.x, gt.road + 8.5, gt.z), { gate: gt });
     });
     g.shrines.list.forEach((s) => {
       add(s.def.name, `Requires level ${s.def.level}`, () => new THREE.Vector3(s.x, s.y + 6.2, s.z), s);
@@ -191,7 +191,7 @@ export class UI {
         let r, gg, b;
         if (h < WATER_LEVEL) { r = 40; gg = 95; b = 135; }
         else if (h < WATER_LEVEL + 1.2) { r = 190; gg = 176; b = 130; }
-        else if (h > 34) { r = 225; gg = 230; b = 238; }
+        else if (h > 34 && !nearWay(x, z)) { r = 225; gg = 230; b = 238; }
         else if (h > 22) { r = 110; gg = 105; b = 100; }
         else { const s = Math.min(1, h / 20); r = 70 + s * 40; gg = 115 + s * 20; b = 55 + s * 10; }
         const shade = 0.85 + ((heightAt(x + 2, z) - h) * 0.06);
@@ -317,7 +317,7 @@ export class UI {
     if (pin.realm !== here) {
       if (!here) {
         const gt = g.gates.list.find((x) => x.def.id === pin.realm);
-        return gt ? { x: gt.x, z: gt.z, via: `cross the bridge to ${gt.def.realm}` } : null;
+        return gt ? { x: gt.x, z: gt.z, via: `through ${THRESHOLDS[gt.def.id].name}` } : null;
       }
       return { x: g.realm.arrive.x, z: g.realm.arrive.z + 5, via: 'back to the valley first' };
     }
@@ -626,7 +626,7 @@ export class UI {
       l.el.style.opacity = String(Math.min(1, (55 - d) / 15));
       if (l.extra?.gate) {
         const d = l.extra.gate.def;
-        const sub = this.state.schoolUnlocked(d.id) ? `${d.name} · ${this.state.masteryTitle(d.id)}` : `Locked · level ${d.level}`;
+        const sub = `${THRESHOLDS[d.id].title} · ${this.state.schoolUnlocked(d.id) ? this.state.masteryTitle(d.id) : `locked · level ${d.level}`}`;
         const sm = l.el.querySelector('small');
         if (sm.textContent !== sub) sm.textContent = sub;
       } else if (l.extra) {

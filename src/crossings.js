@@ -1,33 +1,36 @@
 import * as THREE from 'three';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { mergeGeometries } from 'three/addons/utils/BufferGeometryUtils.js';
-import { heightAt, passRoadHeight, bleedAt, slopeAt, WATER_LEVEL } from './world.js';
-import { SCHOOLS, SHRINES, REALM_PASSES, PASS_LIP, PASS_END, passPoint } from './data.js';
+import { heightAt, passRoadHeight, bleedAt, slopeAt, WATER_LEVEL, TUNNEL_LEN, TUNNEL_DROP, TUNNEL_HALF } from './world.js';
+import { SCHOOLS, SHRINES, REALM_PASSES, PASS_LIP, THRESHOLD_IN, passPoint } from './data.js';
 import { clay } from './style.js';
 import { mulberry32 } from './util.js';
 
 // The ways to the other realms. Each realm lies beyond the valley's mountain ring in its direction
-// on the atlas: a road climbs through a pass to the lip of a chasm full of mist, and a rope bridge
-// runs out over it into a bank of fog tinted with the realm's colour. Walk into the fog and you
-// are there. A sealed realm's bridge has lost its middle planks, and mends when the gate opens.
+// on the atlas, and a road climbs to where the mountain stands up in front of it. There the way
+// goes in, built for the land beyond:
+//   the Deep      — the Old Mine: a timber-shored adit, rails running down into the dark
+//   the Caldera   — the Cinder Road: a basalt cleft, braziers and a lava channel, heat ahead
+//   the Hollow    — the Glacier Cave: an arch of blue ice under snow
+//   the Crypt     — the Barrow Gate: standing stones and an iron gate into a hillside barrow
+// Walk a few steps in and you are through. The same mouth stands in the realm, so you step out of
+// the very place you went in. A locked way is caved in, walled with lava, frozen or chained.
+// Far out past the ring, each realm shows itself on the valley's horizon: a crystal-veined crag, a
+// smoking volcano, snow peaks, a ruined cathedral.
 //
-// Before you reach the pass, the realm is already seeping into the valley (world.js bleedAt):
+// Before you reach the road, the realm is already seeping into the valley (world.js bleedAt):
 // snow and pines toward the Hollow, graves and grey grass toward the Crypt, ochre rock and
 // crystals toward the Deep, ash, basalt and glowing cracks toward the Caldera.
-const DECK_W = 1.7;                        // half-width of the deck
-const START = PASS_LIP - 3, STOP = PASS_END + 3;
-const MID = (PASS_LIP + PASS_END) / 2, GAP = 4.5;
-const SAG = 1.3;
 const BLEED_IDS = ['necromancy', 'geomancy', 'cryomancy', 'pyromancy'];
+const ARCH_H = 4.6;                                   // clear height of a mouth
+const SLOPE = Math.atan2(TUNNEL_DROP, TUNNEL_LEN);    // the way in runs gently downhill
 
-// Height of the deck's walking surface at distance s along the pass.
-function deckY(id, s) {
-  const t = THREE.MathUtils.clamp((s - START) / (STOP - START), 0, 1);
-  return passRoadHeight(id) + 0.2 - SAG * Math.sin(Math.PI * t);
-}
+const merge = (...gs) => mergeGeometries(gs.map((g) => (g.index ? g.toNonIndexed() : g)));
+const glow = (color, k = 1.8) => new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: k, roughness: 0.4 });
+const mesh = (geo, mat, shadow = true) => { const m = new THREE.Mesh(geo, mat); m.castShadow = shadow; m.receiveShadow = true; return m; };
 
-// Soft billboard puffs (one draw call for every bank of mist in the valley).
-function mistMaterial() {
+// Soft billboard puffs (the volcano's smoke plume).
+function puffMaterial() {
   return new THREE.ShaderMaterial({
     transparent: true, depthWrite: false, fog: false,
     uniforms: { uTime: { value: 0 } },
@@ -36,7 +39,8 @@ function mistMaterial() {
       varying vec2 vUv; varying vec4 vTint;
       void main() {
         vUv = uv; vTint = aTint;
-        vec3 c = aPuff.xyz + vec3(sin(uTime * 0.13 + aPuff.z * 0.3) * 1.6, sin(uTime * 0.21 + aPuff.x) * 0.4, cos(uTime * 0.11 + aPuff.x * 0.3) * 1.6);
+        float rise = mod(uTime * 2.0 + aPuff.w * 3.0, 40.0);
+        vec3 c = aPuff.xyz + vec3(sin(uTime * 0.05 + aPuff.y * 0.02) * 12.0 + rise * 0.8, rise, cos(uTime * 0.04 + aPuff.x) * 8.0);
         vec4 mv = modelViewMatrix * vec4(c, 1.0);
         mv.xy += position.xy * aPuff.w;
         gl_Position = projectionMatrix * mv;
@@ -45,133 +49,324 @@ function mistMaterial() {
       varying vec2 vUv; varying vec4 vTint;
       void main() {
         float r = length(vUv - 0.5) * 2.0;
-        float a = smoothstep(1.0, 0.15, r) * vTint.a;
+        float a = smoothstep(1.0, 0.2, r) * vTint.a;
         if (a < 0.004) discard;
         gl_FragColor = vec4(vTint.rgb, a);
       }`,
   });
 }
 
+// ------------------------------------------------------------------ the mouths
+// Built in local space: the mouth at z = 0 facing -z (where you come from), the way running into
+// +z. `flat` (in a realm) keeps the floor level instead of sloping down into the mountain.
+
+// The inside: a half-pipe shaded from `mouth` at the entrance to `deep` at the far end (black
+// underground; the lava's glow at the end of the cleft; glacier light in the ice).
+function tunnel(mouth, deep, flat, rock) {
+  const g = new THREE.Group(), L = TUNNEL_LEN + 2, R = TUNNEL_HALF + 0.15;
+  const shade = (geo) => {
+    const p = geo.attributes.position, col = new Float32Array(p.count * 3), a = new THREE.Color(mouth), b = new THREE.Color(deep), c = new THREE.Color();
+    for (let i = 0; i < p.count; i++) { c.copy(a).lerp(b, Math.min(1, Math.max(0, p.getZ(i) / TUNNEL_LEN)) ** 0.6).toArray(col, i * 3); }
+    geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    return geo;
+  };
+  const mat = new THREE.MeshBasicMaterial({ vertexColors: true, side: THREE.BackSide });
+  const tall = (ARCH_H - 0.1) / R; // as high inside as the mouth
+  const pipe = new THREE.CylinderGeometry(R, R, L, 20, 14, true, -Math.PI / 2, Math.PI).rotateX(-Math.PI / 2).scale(1, tall, 1).translate(0, 0, L / 2 + 0.3);
+  const floor = new THREE.PlaneGeometry(R * 2, L, 1, 14).rotateX(-Math.PI / 2).translate(0, 0.03, L / 2 + 0.3);
+  g.add(new THREE.Mesh(shade(pipe), mat), new THREE.Mesh(shade(floor), new THREE.MeshBasicMaterial({ vertexColors: true })));
+  // Seen from above (the camera, high behind you), the tunnel is a ridge of the same rock.
+  if (rock) g.add(mesh(new THREE.CylinderGeometry(R + 0.4, R + 0.4, L, 14, 1, true, -Math.PI / 2, Math.PI).rotateX(-Math.PI / 2).scale(1, (ARCH_H + 0.4) / (R + 0.4), 1).translate(0, 0, L / 2 + 0.3), rock));
+  const cap = new THREE.Mesh(new THREE.CircleGeometry(R, 20, 0, Math.PI).scale(1, tall, 1), new THREE.MeshBasicMaterial({ color: deep }));
+  cap.position.z = L + 0.3; cap.rotation.y = Math.PI;
+  g.add(cap);
+  if (!flat) g.rotation.x = SLOPE;
+  return g;
+}
+
+// The rock the way is cut into: jambs, a lintel, shoulders, and a roof running back over the
+// tunnel (in the valley the mountain stands behind it; in a realm it is a hill of its own).
+function rockFace(mat, rnd, { snow = null, hill = false } = {}) {
+  const geos = [], caps = [];
+  const boulder = (x, y, z, r, sx = 1, sy = 1, sz = 1) => {
+    geos.push(new THREE.DodecahedronGeometry(r, 1).scale(sx, sy, sz).rotateY(rnd() * 6).translate(x, y, z));
+    if (snow && y + r * sy > ARCH_H + 1) caps.push(new THREE.SphereGeometry(r * 0.8, 10, 6).scale(sx * 1.05, 0.32, sz * 1.05).translate(x, y + r * sy * 0.78, z));
+  };
+  for (const side of [-1, 1]) for (let k = 0; k < 4; k++) { const r = 1.6 + rnd() * 0.7; boulder(side * (TUNNEL_HALF + r * 0.92), 0.6 + k * 2.1, 1.1 + rnd() * 0.8, r); }
+  for (let k = -2; k <= 2; k++) boulder(k * 1.75, ARCH_H + 1.35 + rnd() * 0.4, 1.3 + rnd() * 0.6, 1.5 + rnd() * 0.35);
+  for (let k = 0; k < 12; k++) { const side = k % 2 ? 1 : -1; boulder(side * (5 + rnd() * 9), 1 + rnd() * 7, 2.5 + rnd() * 5, 2.2 + rnd() * 1.8); }
+  for (let z = 3; z < TUNNEL_LEN + 3; z += 2.6) {
+    const y = ARCH_H + 1.2 - (hill ? 0 : z * TUNNEL_DROP / TUNNEL_LEN);
+    boulder((rnd() - 0.5) * 1.5, y + rnd() * 0.6, z, 2.6 + rnd() * 0.8, 1.5, 0.8, 1.1);
+    if (hill) for (const side of [-1, 1]) boulder(side * (TUNNEL_HALF + 1.8 + rnd()), 1.2 + rnd(), z, 2.2 + rnd() * 0.6);
+  }
+  const g = new THREE.Group();
+  g.add(mesh(merge(...geos), mat));
+  if (caps.length) g.add(mesh(merge(...caps), snow, false));
+  return g;
+}
+
+// One realm's mouth: the rock, the inside, what's built at the entrance, and how it's barred.
+function buildMouth(id, color, rnd, { flat = false } = {}) {
+  const root = new THREE.Group(), open = new THREE.Group(), locked = new THREE.Group();
+  const flames = [], glows = [], cols = [];
+  root.add(open, locked);
+  const col = (x, z, radius) => cols.push({ x, z, radius });
+  const inside = (y, z) => y - (flat ? 0 : z * TUNNEL_DROP / TUNNEL_LEN); // floor height inside at depth z
+  if (id === 'geomancy') {
+    // The Old Mine: rock with crystal seams, a shored adit, rails down into the dark, a cart outside.
+    const wood = clay('#8a5f38', { roughness: 0.85, key: 'mineWood' }), iron = clay('#55504f', { roughness: 0.5, key: 'mineIron' });
+    const rust = clay('#7a4a30', { roughness: 0.7, key: 'mineRust' }), rock = clay('#8a7160', { roughness: 0.85, key: 'mineRock' });
+    root.add(rockFace(rock, rnd, { hill: flat }), tunnel('#3a2c22', '#000000', flat, rock));
+    for (const z of [0.3, 5, 10]) { // shoring frames, the first at the mouth
+      const y = inside(0, z), f = new THREE.Group();
+      for (const side of [-1, 1]) f.add(mesh(new RoundedBoxGeometry(0.42, ARCH_H, 0.42, 2, 0.06).translate(side * (TUNNEL_HALF - 0.25), ARCH_H / 2, 0), wood));
+      f.add(mesh(new RoundedBoxGeometry(TUNNEL_HALF * 2 + 0.5, 0.5, 0.5, 2, 0.08).translate(0, ARCH_H, 0), wood));
+      f.position.set(0, y, z); root.add(f);
+    }
+    const lampMat = glow('#ffc46a', 2.2); glows.push({ mat: lampMat, k: 2.2 });
+    for (const [x, z] of [[-(TUNNEL_HALF - 0.25), -0.1], [TUNNEL_HALF - 0.25, -0.1], [0, 5]]) {
+      const lamp = mesh(new RoundedBoxGeometry(0.34, 0.46, 0.34, 2, 0.06), lampMat, false);
+      lamp.position.set(x, inside(ARCH_H - 0.55, z), z); root.add(lamp);
+    }
+    // Rails: out along the road, then down into the mountain.
+    const rails = (z0, z1, y0, y1) => {
+      const len = z1 - z0, a = Math.atan2(y0 - y1, len), g = new THREE.Group();
+      for (const x of [-0.62, 0.62]) g.add(mesh(new THREE.BoxGeometry(0.1, 0.1, len).translate(x, 0.11, len / 2), iron));
+      const sl = new THREE.InstancedMesh(new THREE.BoxGeometry(1.7, 0.08, 0.26), wood, Math.floor(len / 0.9)), m = new THREE.Matrix4();
+      for (let i = 0; i < sl.count; i++) sl.setMatrixAt(i, m.makeTranslation(0, 0.04, 0.45 + i * 0.9));
+      sl.receiveShadow = true; g.add(sl);
+      g.position.set(0, y0, z0); g.rotation.x = a; return g;
+    };
+    root.add(rails(-12, 0, 0, 0), rails(0, TUNNEL_LEN, 0, inside(0, TUNNEL_LEN)));
+    // A cart full of crystal, waiting outside.
+    const cart = new THREE.Group();
+    cart.add(mesh(new RoundedBoxGeometry(1.35, 0.8, 1.9, 2, 0.1).translate(0, 0.78, 0), rust));
+    for (const [x, z] of [[-0.62, -0.6], [0.62, -0.6], [-0.62, 0.6], [0.62, 0.6]]) cart.add(mesh(new THREE.CylinderGeometry(0.26, 0.26, 0.12, 12).rotateZ(Math.PI / 2).translate(x, 0.3, z), iron));
+    const gem = glow('#b68cff', 1.4); glows.push({ mat: gem, k: 1.4 });
+    cart.add(mesh(merge(new THREE.ConeGeometry(0.22, 0.9, 6).translate(-0.25, 1.4, 0.2), new THREE.ConeGeometry(0.18, 0.7, 6).rotateZ(0.4).translate(0.25, 1.3, -0.2), new THREE.ConeGeometry(0.2, 0.8, 6).rotateZ(-0.3).translate(0.1, 1.35, 0.5)), gem, false));
+    cart.position.set(0, 0, -7.5); root.add(cart); col(0, -7.5, 1.1);
+    // Crystal seams breaking out of the rock round the mouth.
+    const seam = glow('#9d7bff', 1.6); glows.push({ mat: seam, k: 1.6 });
+    const shards = [];
+    for (let k = 0; k < 7; k++) { const side = k % 2 ? 1 : -1, h = 0.8 + rnd() * 1.1; shards.push(new THREE.ConeGeometry(0.2 + rnd() * 0.15, h, 6).rotateZ(side * (0.5 + rnd() * 0.5)).translate(side * (TUNNEL_HALF + 1 + rnd() * 1.5), 1 + rnd() * 4.5, -0.4 + rnd() * 0.5)); }
+    root.add(mesh(merge(...shards), seam, false));
+    // Caved in: rubble to the lintel, and two boards nailed across.
+    const rubble = [];
+    for (let k = 0; k < 11; k++) rubble.push(new THREE.DodecahedronGeometry(0.7 + rnd() * 0.6, 0).translate((rnd() - 0.5) * 4, 0.5 + rnd() * 3.2, 0.3 + rnd() * 1.4));
+    locked.add(mesh(merge(...rubble), rock));
+    for (const r of [-0.45, 0.45]) locked.add(mesh(new THREE.BoxGeometry(TUNNEL_HALF * 2 + 0.6, 0.34, 0.12).rotateZ(r).translate(0, 2.2, -0.2), wood));
+  } else if (id === 'pyromancy') {
+    // The Cinder Road: a cleft in black basalt, columns either side, braziers, and a channel of lava
+    // running beside the road into the mountain. The far end of the cleft glows.
+    const basalt = clay('#2e2826', { roughness: 0.7, key: 'cinderBasalt' }), rock = clay('#3c322e', { roughness: 0.8, key: 'cinderRock' });
+    const iron = clay('#4a403c', { roughness: 0.5, key: 'cinderIron' });
+    root.add(rockFace(rock, rnd, { hill: flat }), tunnel('#2a1a16', '#ff5a1a', flat, rock));
+    const cols6 = [];
+    for (const side of [-1, 1]) for (let k = 0; k < 5; k++) { const h = 4.5 + rnd() * 4.5; cols6.push(new THREE.CylinderGeometry(0.5, 0.56, h, 6).translate(side * (TUNNEL_HALF + 0.7 + (k % 3) * 0.95), h / 2, -0.8 + Math.floor(k / 3) * 0.9 + rnd() * 0.3)); }
+    root.add(mesh(merge(...cols6), basalt));
+    const fire = glow('#ff7a1c', 2.6);
+    for (const side of [-1, 1]) {
+      const x = side * (TUNNEL_HALF + 1.2), z = -3;
+      const b = new THREE.Group();
+      b.add(mesh(new THREE.CylinderGeometry(0.32, 0.46, 1.2, 6).translate(0, 0.6, 0), basalt), mesh(new THREE.CylinderGeometry(0.7, 0.42, 0.35, 10).translate(0, 1.35, 0), iron));
+      const f = mesh(merge(new THREE.ConeGeometry(0.42, 1.1, 7).translate(0, 0.55, 0), new THREE.ConeGeometry(0.26, 0.8, 7).translate(0.18, 0.4, 0.1)), fire, false);
+      f.position.y = 1.5; b.add(f); flames.push(f);
+      b.position.set(x, 0, z); root.add(b); col(x, z, 0.7);
+    }
+    // The lava channel beside the road, fed from inside the cleft.
+    const lava = glow('#ff6a1c', 2.2); glows.push({ mat: lava, k: 2.2 });
+    const ch = new THREE.Group(), x = TUNNEL_HALF + 1.1;
+    ch.add(mesh(new THREE.BoxGeometry(0.7, 0.06, 26).translate(x, 0.04, -13), lava, false));
+    for (const dx of [-0.5, 0.5]) ch.add(mesh(new THREE.BoxGeometry(0.28, 0.22, 26).translate(x + dx, 0.1, -13), basalt));
+    root.add(ch);
+    // Walled: a slab of cooled lava, still cracked with heat.
+    locked.add(mesh(new RoundedBoxGeometry(TUNNEL_HALF * 2 + 0.5, ARCH_H + 0.3, 1.4, 3, 0.35).translate(0, (ARCH_H + 0.3) / 2, 0.6), basalt));
+    const cracks = [], crack = glow('#ff5a1a', 1.3);
+    for (let k = 0; k < 6; k++) cracks.push(new THREE.BoxGeometry(0.07, 0.8 + rnd() * 1.4, 0.05).rotateZ((rnd() - 0.5) * 1.6).translate((rnd() - 0.5) * 3.8, 0.8 + rnd() * 3.2, -0.12));
+    locked.add(mesh(merge(...cracks), crack, false));
+  } else if (id === 'cryomancy') {
+    // The Glacier Cave: an arch of blue ice in snowy rock, icicles, drifts, glacier light within.
+    const rock = clay('#8b97a6', { roughness: 0.8, key: 'glacierRock' }), snow = clay('#f6fbff', { roughness: 0.6, key: 'glacierSnow' });
+    const ice = new THREE.MeshStandardMaterial({ color: '#bfeaff', emissive: '#5fbfff', emissiveIntensity: 0.3, roughness: 0.1, transparent: true, opacity: 0.85, flatShading: true });
+    glows.push({ mat: ice, k: 0.3 });
+    root.add(rockFace(rock, rnd, { snow, hill: flat }), tunnel('#bfe4f2', '#3aa6ff', flat, snow));
+    const chunks = [];
+    for (let k = 0; k <= 12; k++) { const t = (k / 12) * Math.PI, r = 0.62 + rnd() * 0.3; chunks.push(new THREE.OctahedronGeometry(r, 0).scale(1, 1.3, 0.8).rotateY(rnd() * 3).translate(-Math.cos(t) * (TUNNEL_HALF + 0.35), Math.sin(t) * (ARCH_H - 0.1) + 0.3, 0.1 + rnd() * 0.3)); }
+    const drips = [];
+    for (let k = 0; k < 11; k++) { const h = 0.5 + rnd() * 1.1; drips.push(new THREE.ConeGeometry(0.1 + rnd() * 0.08, h, 5).rotateX(Math.PI).translate(-2 + k * 0.4 + (rnd() - 0.5) * 0.2, ARCH_H - 0.1 - h / 2, -0.15)); }
+    root.add(mesh(merge(...chunks, ...drips), ice, false));
+    const drifts = [];
+    for (const side of [-1, 1]) for (let k = 0; k < 3; k++) drifts.push(new THREE.SphereGeometry(1.2 + rnd() * 0.8, 12, 7).scale(1, 0.32, 1.1).translate(side * (TUNNEL_HALF + 1.4 + k * 1.6), 0, -1.6 - rnd() * 3));
+    root.add(mesh(merge(...drifts), snow));
+    // Frozen shut: a wall of thick ice filling the arch.
+    const wall = new THREE.MeshStandardMaterial({ color: '#d6f2ff', emissive: '#6fc8ff', emissiveIntensity: 0.2, roughness: 0.05, transparent: true, opacity: 0.93, flatShading: true });
+    locked.add(mesh(new THREE.DodecahedronGeometry(1, 1).scale(TUNNEL_HALF + 0.3, ARCH_H / 2 + 0.2, 0.8).translate(0, ARCH_H / 2, 0.5), wall));
+  } else {
+    // The Barrow Gate: a grassy mound, standing stones and a lintel, an iron gate, green lamps,
+    // and steps going down into the dark.
+    const earth = clay('#59624f', { roughness: 0.9, key: 'barrowEarth' }), stone = clay('#8f8c98', { roughness: 0.75, key: 'barrowStone' });
+    const iron = clay('#2c2a30', { roughness: 0.45, key: 'barrowIron' });
+    root.add(rockFace(earth, rnd, { hill: flat }), tunnel('#2c342e', '#050806', flat, earth));
+    for (const side of [-1, 1]) root.add(mesh(new RoundedBoxGeometry(1.0, ARCH_H + 0.6, 1.0, 2, 0.14).translate(side * (TUNNEL_HALF + 0.3), (ARCH_H + 0.6) / 2, -0.2), stone));
+    root.add(mesh(new RoundedBoxGeometry(TUNNEL_HALF * 2 + 2.4, 0.85, 1.2, 2, 0.16).translate(0, ARCH_H + 0.9, -0.2), stone));
+    const steps = new THREE.InstancedMesh(new THREE.BoxGeometry(TUNNEL_HALF * 2 - 0.3, 0.16, 0.9), stone, 10), m = new THREE.Matrix4();
+    for (let i = 0; i < 10; i++) steps.setMatrixAt(i, m.makeTranslation(0, inside(0.05, 1 + i * 1.4), 1 + i * 1.4));
+    steps.receiveShadow = true; root.add(steps);
+    // The gate: two leaves of bars. Open, they stand swung back inside; locked, shut and chained.
+    const leaf = () => {
+      const w = TUNNEL_HALF - 0.1, parts = [];
+      for (let k = 0; k < 5; k++) parts.push(new THREE.CylinderGeometry(0.05, 0.05, ARCH_H - 0.3, 6).translate(0.25 + k * (w - 0.3) / 4, (ARCH_H - 0.3) / 2, 0));
+      for (const y of [0.5, ARCH_H - 0.6]) parts.push(new THREE.BoxGeometry(w, 0.1, 0.08).translate(w / 2, y, 0));
+      return merge(...parts);
+    };
+    for (const side of [-1, 1]) {
+      const geo = leaf(); if (side > 0) geo.scale(-1, 1, 1);
+      const pivot = new THREE.Vector3(side * -(TUNNEL_HALF - 0.1), 0, 0.2);
+      const shut = mesh(geo.clone(), iron); shut.position.copy(pivot); locked.add(shut);
+      const swung = mesh(geo, iron); swung.position.copy(pivot); swung.rotation.y = side * -Math.PI * 0.55; open.add(swung);
+    }
+    const links = [];
+    for (let k = 0; k < 7; k++) links.push(new THREE.TorusGeometry(0.12, 0.035, 5, 10).rotateY(k % 2 ? Math.PI / 2 : 0).translate(-0.72 + k * 0.24, 2.1, 0.08));
+    links.push(new RoundedBoxGeometry(0.34, 0.4, 0.14, 2, 0.04).translate(0, 1.82, 0.05));
+    locked.add(mesh(merge(...links), clay('#6d6660', { roughness: 0.4, key: 'barrowChain' }), false));
+    const lamp = glow('#7dffb0', 1.9); glows.push({ mat: lamp, k: 1.9 });
+    for (const side of [-1, 1]) {
+      const x = side * (TUNNEL_HALF + 1.7), z = -3.2;
+      root.add(mesh(new THREE.CylinderGeometry(0.07, 0.09, 2.3, 6).translate(x, 1.15, z), iron), mesh(new RoundedBoxGeometry(0.36, 0.48, 0.36, 2, 0.06).translate(x, 2.45, z), lamp, false));
+      col(x, z, 0.4);
+    }
+  }
+  return { root, open, locked, flames, glows, cols };
+}
+
+// ------------------------------------------------------------------ the horizon
+// Each realm, seen from the valley over the mountain ring. Fog would swallow anything this far
+// out, so these do their own: aerial perspective that is thick at the foot (so they rise out of
+// the misted ridge in front) and thins toward the summit, in the sky's colour of the moment.
+const HAZE = { uFog: { value: new THREE.Color('#cfe6f5') } };
+function hazeMaterial(color, { foot = 0.85, top = 0.18, y0 = 10, y1 = 120, lit = true } = {}) {
+  return new THREE.ShaderMaterial({
+    fog: false,
+    uniforms: { uFog: HAZE.uFog, uCol: { value: new THREE.Color(color) }, uFoot: { value: foot }, uTop: { value: top }, uY: { value: new THREE.Vector2(y0, y1) }, uLit: { value: lit ? 1 : 0 } },
+    vertexShader: `
+      varying vec3 vW;
+      void main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
+    fragmentShader: `
+      uniform vec3 uFog, uCol; uniform float uFoot, uTop, uLit; uniform vec2 uY; varying vec3 vW;
+      void main() {
+        vec3 n = normalize(cross(dFdx(vW), dFdy(vW)));
+        float l = mix(1.0, 0.5 + 0.55 * max(dot(n, normalize(vec3(0.45, 0.8, -0.35))), 0.0), uLit);
+        float haze = mix(uFoot, uTop, smoothstep(uY.x, uY.y, vW.y));
+        gl_FragColor = vec4(mix(uCol * l, uFog, haze), 1.0);
+      }`,
+  });
+}
+
+function horizonPiece(id, rnd, hazed) {
+  const g = new THREE.Group();
+  const land = (color, o) => hazeMaterial(color, o);
+  const light = (color) => hazeMaterial(color, { foot: 0.6, top: 0.05, lit: false });
+  let plume = null;
+  if (id === 'pyromancy') {
+    // A great volcano: a crater that glows, lava running down its flanks, a plume of smoke.
+    const prof = [[0, 150], [18, 158], [25, 171], [33, 167], [60, 122], [100, 64], [148, 16], [190, -12]];
+    g.add(new THREE.Mesh(new THREE.LatheGeometry(prof.map(([r, y]) => new THREE.Vector2(r, y)), 40), land('#4a3833')));
+    const lava = light('#ff6a1c');
+    g.add(new THREE.Mesh(new THREE.TorusGeometry(26, 2.6, 8, 40).rotateX(Math.PI / 2).translate(0, 168, 0), lava));
+    const radiusAt = (y) => { for (let i = 1; i < prof.length; i++) { const [r1, y1] = prof[i - 1], [r2, y2] = prof[i]; if (y <= y1 && y >= y2) return r1 + (r2 - r1) * (y1 - y) / (y1 - y2); } return 190; };
+    for (let k = 0; k < 5; k++) {
+      const a0 = -Math.PI / 2 + (k - 2) * 0.32 + (rnd() - 0.5) * 0.1, pts = [];
+      for (let y = 164; y > 40 + rnd() * 50; y -= 8) { const a = a0 + Math.sin(y * 0.05 + k) * 0.05, r = radiusAt(y) + 1.2; pts.push(new THREE.Vector3(Math.cos(a) * r, y, Math.sin(a) * r)); }
+      g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, 1.6 + rnd(), 5), lava));
+    }
+    plume = { at: new THREE.Vector3(0, 172, 0), n: 64, col: new THREE.Color('#4d4644') };
+  } else if (id === 'cryomancy') {
+    // Snow peaks, the glacier's source.
+    for (const [x, r, h] of [[-70, 70, 150], [15, 88, 182], [100, 62, 128]]) {
+      const z = rnd() * 30, capH = h * 0.44;
+      g.add(new THREE.Mesh(new THREE.ConeGeometry(r, h, 7, 1).translate(x, h / 2 - 12, z), land('#48596f', { foot: 0.8, top: 0.08 })));
+      g.add(new THREE.Mesh(new THREE.ConeGeometry(r * 0.44 + 0.6, capH, 7, 1).translate(x, h - 12 - capH / 2 + 0.4, z), land('#ffffff', { foot: 0.3, top: 0.02 })));
+    }
+  } else if (id === 'geomancy') {
+    // A split crag, seamed with crystal.
+    for (const [x, r, h, t] of [[-40, 58, 142, 0.1], [12, 72, 170, -0.06], [62, 46, 122, -0.14], [-88, 40, 96, 0.16]]) {
+      g.add(new THREE.Mesh(new THREE.ConeGeometry(r, h, 5, 1).rotateZ(t).translate(x, h / 2 - 14, rnd() * 20), land('#7a5a44')));
+    }
+    const gem = light('#a37bff'), gem2 = light('#6fd6ff');
+    for (let k = 0; k < 9; k++) { const x = -90 + k * 22 + (rnd() - 0.5) * 8, y = 40 + rnd() * 70; g.add(new THREE.Mesh(new THREE.OctahedronGeometry(12 + rnd() * 8, 0).scale(0.45, 2.6, 0.45).rotateZ((rnd() - 0.5) * 0.9).translate(x, y, -34 - (1 - (y - 40) / 110) * 18), k % 2 ? gem : gem2)); }
+  } else {
+    // A barrow hill crowned with a ruined cathedral, its windows lit green.
+    const dark = land('#2f3634', { foot: 0.8, top: 0.12 }), winHi = light('#b0ffd0');
+    g.add(new THREE.Mesh(new THREE.SphereGeometry(120, 18, 10).scale(1, 0.42, 0.75).translate(0, -18, 0), land('#3f4a3f')));
+    g.add(new THREE.Mesh(new THREE.BoxGeometry(64, 36, 24).translate(0, 50, 0), dark));
+    for (const [x, h, spire] of [[-38, 70, 44], [38, 52, 0], [0, 26, 70]]) {
+      g.add(new THREE.Mesh(new THREE.BoxGeometry(15, h, 15).translate(x, 32 + h / 2, 0), dark));
+      if (spire) g.add(new THREE.Mesh(new THREE.ConeGeometry(10, spire, 4).rotateY(Math.PI / 4).translate(x, 32 + h + spire / 2, 0), dark));
+      if (x) g.add(new THREE.Mesh(new THREE.BoxGeometry(3.2, 9, 1).translate(x, 32 + h - 14, -7.8), winHi));
+    }
+    const win = light('#9dffc4');
+    for (let k = 0; k < 7; k++) g.add(new THREE.Mesh(new THREE.BoxGeometry(3, 8, 1).translate(-24 + k * 8, 50 + (k % 2) * 4, -12.6), win));
+    g.add(new THREE.Mesh(new THREE.CircleGeometry(4.5, 16).rotateY(Math.PI).translate(0, 64, -12.7), win));
+  }
+  return { group: g, plume };
+}
+
 export class Crossings {
   constructor(game) {
     this.game = game;
     this.list = [];
-    this.colliders = [];
+    this.flames = [];
+    this.glows = [];
+    this.hazed = [];
     this.group = new THREE.Group();
     game.scene.add(this.group);
-    const wood = clay('#9a6a3e', { roughness: 0.8, key: 'bridgeWood' }), woodDark = clay('#6e4a2a', { roughness: 0.8, key: 'bridgeWoodDark' });
-    const rope = clay('#d8bf8a', { roughness: 0.9, key: 'bridgeRope' }), stone = clay('#a39aa8', { roughness: 0.75, key: 'bridgeStone' });
     const puffs = [];
     SCHOOLS.forEach((def) => {
-      const id = def.id, road = passRoadHeight(id), a = REALM_PASSES[id].a;
-      const facing = Math.atan2(Math.cos(a), Math.sin(a)); // looking out along the pass
-      const head = passPoint(id, PASS_LIP - 6);
-      const whole = this.buildBridge(id, false, wood, woodDark, rope), broken = this.buildBridge(id, true, wood, woodDark, rope);
-      this.group.add(whole, broken);
-      // Two carved pillars at the bridgehead, each capped with a stone glowing in the realm's colour.
-      const runeMat = new THREE.MeshStandardMaterial({ color: def.color, emissive: def.color, emissiveIntensity: 0.2, roughness: 0.4 });
-      const pillars = new THREE.Group();
-      for (const side of [-1, 1]) {
-        const q = passPoint(id, START - 0.5, side * (DECK_W + 1.1)), y = heightAt(q.x, q.z);
-        const p = new THREE.Mesh(new RoundedBoxGeometry(1.0, 3.6, 1.0, 3, 0.18), stone);
-        p.position.set(q.x, y + 1.6, q.z); p.rotation.y = facing; p.castShadow = true;
-        const cap = new THREE.Mesh(new THREE.OctahedronGeometry(0.42), runeMat);
-        cap.position.set(q.x, y + 3.85, q.z);
-        pillars.add(p, cap);
-        this.colliders.push({ x: q.x, z: q.z, radius: 0.75 });
+      const id = def.id, road = passRoadHeight(id), facing = this.facingOf(id), rnd = mulberry32(id.length * 131 + 7);
+      const m = buildMouth(id, def.color, rnd);
+      const at = passPoint(id, PASS_LIP);
+      m.root.position.set(at.x, road, at.z); m.root.rotation.y = facing;
+      this.group.add(m.root);
+      this.flames.push(...m.flames); this.glows.push(...m.glows);
+      // Local (x across, z along) to world: local +x is to the left looking out.
+      const W = (lx, lz) => passPoint(id, PASS_LIP + lz, -lx);
+      const stat = m.cols.map((c) => ({ ...W(c.x, c.z), radius: c.radius }));
+      for (let z = -1.5; z <= TUNNEL_LEN; z += 0.9) for (const side of [-1, 1]) stat.push({ ...W(side * (TUNNEL_HALF + 0.35), z), radius: 0.5 }); // the tunnel's walls
+      for (let x = TUNNEL_HALF + 0.9; x < 22; x += 1.2) for (const side of [-1, 1]) stat.push({ ...W(side * x, 0.4), radius: 0.7 }); // the face: no climbing over the top
+      const block = [];
+      for (let x = -TUNNEL_HALF + 0.3; x <= TUNNEL_HALF - 0.3; x += 0.75) block.push({ ...W(x, -0.8), radius: 0.6 });
+      // The realm on the horizon, far out past the ring.
+      const hz = horizonPiece(id, mulberry32(id.length * 17 + 3), this.hazed);
+      const far = passPoint(id, id === 'pyromancy' ? 430 : 400);
+      hz.group.position.set(far.x, -8, far.z); hz.group.rotation.y = facing;
+      hz.group.traverse((o) => { o.frustumCulled = false; });
+      this.group.add(hz.group);
+      if (hz.plume) {
+        const p = hz.plume.at.clone().applyEuler(hz.group.rotation).add(hz.group.position), r2 = mulberry32(5);
+        for (let i = 0; i < hz.plume.n; i++) {
+          const up = r2() * 150, c = hz.plume.col.clone().offsetHSL(0, 0, (r2() - 0.5) * 0.08);
+          puffs.push({ p: [p.x + (r2() - 0.5) * 20 + up * 0.5, p.y + up, p.z + (r2() - 0.5) * 20], size: 30 + up * 0.45 + r2() * 16, c, a: 0.8 - up / 280 });
+        }
       }
-      this.group.add(pillars);
-      // Rope rails keep you on the deck (and you can't step off the lip: the chasm is a wall).
-      for (let s = START; s <= STOP; s += 1) for (const side of [-1, 1]) {
-        const q = passPoint(id, s, side * (DECK_W + 0.35));
-        this.colliders.push({ x: q.x, z: q.z, radius: 0.35 });
-      }
-      // Mist filling the chasm below, and a bank of fog at the far end in the realm's colour.
-      const rnd = mulberry32(id.length * 977 + 5), tint = new THREE.Color(def.color).lerp(new THREE.Color('#ffffff'), 0.3);
-      // A thick floor of cloud hides the chasm's depths (and the water far below)...
-      for (let i = 0; i < 130; i++) {
-        const s = PASS_LIP + 1 + rnd() * 90, cw = 14 + (s - PASS_LIP) * 0.45;
-        const q = passPoint(id, s, (rnd() - 0.5) * 2 * cw);
-        const shade = 0.86 + rnd() * 0.12; // a little modelling, so the cloud sea has form
-        puffs.push({ p: [q.x, Math.max(WATER_LEVEL + 1.2, road - 11) + rnd() * 2.5, q.z], size: 12 + rnd() * 12, c: new THREE.Color(shade, shade, shade * 1.04), a: 0.5 + rnd() * 0.25 });
-      }
-      for (let i = 0; i < 40; i++) {
-        const s = PASS_END - 1 + rnd() * 18, q = passPoint(id, s, (rnd() - 0.5) * 14);
-        puffs.push({ p: [q.x, road - 2 + rnd() * 9, q.z], size: 5 + rnd() * 6, c: tint.clone().offsetHSL(0, 0, (rnd() - 0.5) * 0.1), a: 0.3 + rnd() * 0.2 });
-      }
-      this.list.push({ def, id, x: head.x, z: head.z, arch: { position: { y: road } }, front: head, facing, whole, broken, runeMat, road, open: null });
+      const front = passPoint(id, PASS_LIP - 4);
+      this.list.push({ def, id, x: front.x, z: front.z, front, facing, road, open: null, mouth: m, stat, block });
     });
-    // The mist mesh: every puff in one instanced draw.
-    const geo = new THREE.InstancedBufferGeometry().copy(new THREE.PlaneGeometry(1, 1));
-    geo.instanceCount = puffs.length;
-    geo.setAttribute('aPuff', new THREE.InstancedBufferAttribute(new Float32Array(puffs.flatMap((q) => [...q.p, q.size])), 4));
-    geo.setAttribute('aTint', new THREE.InstancedBufferAttribute(new Float32Array(puffs.flatMap((q) => [q.c.r, q.c.g, q.c.b, q.a])), 4));
-    this.mist = new THREE.Mesh(geo, mistMaterial());
-    this.mist.frustumCulled = false; this.mist.renderOrder = 5;
-    this.group.add(this.mist);
-    game.aoHidden?.push(this.mist); // soft quads must stay out of the ambient-occlusion depth pass
-    this.group.userData.noCut = true;
+    if (puffs.length) {
+      const geo = new THREE.InstancedBufferGeometry().copy(new THREE.PlaneGeometry(1, 1));
+      geo.instanceCount = puffs.length;
+      geo.setAttribute('aPuff', new THREE.InstancedBufferAttribute(new Float32Array(puffs.flatMap((q) => [...q.p, q.size])), 4));
+      geo.setAttribute('aTint', new THREE.InstancedBufferAttribute(new Float32Array(puffs.flatMap((q) => [q.c.r, q.c.g, q.c.b, q.a])), 4));
+      this.smoke = new THREE.Mesh(geo, puffMaterial());
+      this.smoke.frustumCulled = false; this.smoke.renderOrder = 5;
+      this.group.add(this.smoke);
+      game.aoHidden?.push(this.smoke);
+    }
+    this.colliders = [];
     this.buildBleedProps();
   }
 
-  buildBridge(id, broken, wood, woodDark, rope) {
-    const g = new THREE.Group(), plank = new THREE.BoxGeometry(DECK_W * 2 + 0.3, 0.14, 0.5);
-    const facing = this.facingOf(id), gone = (s) => broken && Math.abs(s - MID) < GAP;
-    const planks = [];
-    for (let s = START; s <= STOP; s += 0.62) {
-      if (gone(s)) continue;
-      const q = passPoint(id, s), m = new THREE.Matrix4();
-      const jig = mulberry32(Math.round(s * 100))() - 0.5;
-      m.compose(new THREE.Vector3(q.x, deckY(id, s) - 0.07, q.z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, facing + jig * 0.06, jig * 0.04)), new THREE.Vector3(1, 1, 1));
-      planks.push(m);
-    }
-    // A few planks hang from the broken ends, swinging over the drop.
-    if (broken) for (const e of [MID - GAP, MID + GAP]) {
-      const q = passPoint(id, e + (e < MID ? 0.4 : -0.4), 0.4), m = new THREE.Matrix4();
-      m.compose(new THREE.Vector3(q.x, deckY(id, e) - 1.1, q.z), new THREE.Quaternion().setFromEuler(new THREE.Euler(1.3, facing, 0.2)), new THREE.Vector3(0.6, 1, 1));
-      planks.push(m);
-    }
-    const im = new THREE.InstancedMesh(plank, wood, planks.length);
-    planks.forEach((m, i) => im.setMatrixAt(i, m));
-    im.castShadow = true; im.receiveShadow = true;
-    g.add(im);
-    // Posts every few metres; ropes sagging between their tops, and along the deck's edges.
-    const post = new THREE.CylinderGeometry(0.1, 0.12, 1.3, 7), posts = [];
-    const tops = { [-1]: [], [1]: [] };
-    for (let s = START; s <= STOP + 0.01; s += (STOP - START) / 6) {
-      if (gone(s)) continue;
-      for (const side of [-1, 1]) {
-        const q = passPoint(id, s, side * (DECK_W + 0.1)), y = deckY(id, s);
-        posts.push(new THREE.Matrix4().makeTranslation(q.x, y + 0.5, q.z));
-        tops[side].push({ s, v: new THREE.Vector3(q.x, y + 1.1, q.z) });
-      }
-    }
-    const pm = new THREE.InstancedMesh(post, woodDark, posts.length);
-    posts.forEach((m, i) => pm.setMatrixAt(i, m));
-    pm.castShadow = true;
-    g.add(pm);
-    const tubes = [];
-    for (const side of [-1, 1]) {
-      const t = tops[side];
-      for (let i = 0; i < t.length - 1; i++) {
-        if (broken && t[i].s < MID && t[i + 1].s > MID) {
-          // Cut rope ends dangle into the gap.
-          for (const [from, dir] of [[t[i], 1], [t[i + 1], -1]]) {
-            const q = passPoint(id, from.s + dir * 2.2, side * (DECK_W + 0.1));
-            tubes.push(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([from.v, new THREE.Vector3(q.x, from.v.y - 1.6, q.z)]), 6, 0.05, 5));
-          }
-          continue;
-        }
-        const pts = [];
-        for (let k = 0; k <= 8; k++) pts.push(t[i].v.clone().lerp(t[i + 1].v, k / 8).setY(THREE.MathUtils.lerp(t[i].v.y, t[i + 1].v.y, k / 8) - 0.35 * Math.sin(Math.PI * k / 8)));
-        tubes.push(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 12, 0.05, 5));
-      }
-    }
-    if (tubes.length) { const r = new THREE.Mesh(mergeGeometries(tubes), rope); r.castShadow = true; g.add(r); }
-    return g;
-  }
-
-  // Yaw that points an object's local +Z out along the pass (so a plank's length lies across it).
+  // Yaw that points an object's local +Z out along the pass.
   facingOf(id) { const a = REALM_PASSES[id].a; return Math.atan2(Math.cos(a), Math.sin(a)); }
 
   // ---------------------------------------------------------------- the realms seeping in
@@ -238,52 +433,46 @@ export class Crossings {
   }
 
   // ---------------------------------------------------------------- the player
-  // A walkable surface: the bridge decks (with a gap in a broken one).
-  surfaceAt(x, z) {
-    for (const c of this.list) {
-      const a = REALM_PASSES[c.id].a, ux = Math.cos(a), uz = Math.sin(a);
-      const s = x * ux + z * uz;
-      if (s < START - 0.5 || s > STOP + 0.5) continue;
-      if (Math.abs(-x * uz + z * ux) > DECK_W + 0.2) continue;
-      if (!c.open && Math.abs(s - MID) < GAP) continue;
-      return deckY(c.id, s);
-    }
-    return -Infinity;
-  }
+  // The floor is the terrain (world.js cuts the slot); nothing extra to stand on.
+  surfaceAt() { return -Infinity; }
 
-  // How far out along its pass `p` is, for the crossing it's on (or null).
-  onBridge(p) {
+  // If `p` is on the last stretch of road or inside a way in: which one, and how far along.
+  inWay(p) {
     for (const c of this.list) {
       const a = REALM_PASSES[c.id].a, ux = Math.cos(a), uz = Math.sin(a), s = p.x * ux + p.z * uz;
-      if (s > START - 2 && Math.abs(-p.x * uz + p.z * ux) < DECK_W + 1) return { c, s };
+      if (s > PASS_LIP - 6 && Math.abs(-p.x * uz + p.z * ux) < TUNNEL_HALF + 1) return { c, s };
     }
     return null;
   }
+  // Far enough inside to be through.
+  through(p) { const w = this.inWay(p); return w && w.c.open && w.s > PASS_LIP + THRESHOLD_IN ? w.c : null; }
 
-  // For prompts: the bridgehead, or the broken end of a sealed bridge.
-  nearest(p, range = 4) {
-    for (const c of this.list) {
-      if (Math.hypot(c.x - p.x, c.z - p.z) < range) return c;
-      if (!c.open) { const e = passPoint(c.id, MID - GAP - 1); if (Math.hypot(e.x - p.x, e.z - p.z) < 3) return c; }
-    }
+  // For prompts: standing at a mouth.
+  nearest(p, range = 5) {
+    for (const c of this.list) if (Math.hypot(c.x - p.x, c.z - p.z) < range) return c;
     return null;
   }
 
-  // Where to set you down coming home from a realm: out on its bridge, facing the valley.
+  // Where to set you down coming home from a realm: just out of the mouth, facing the valley.
   arrival(id) {
-    const q = passPoint(id, PASS_END - 10), a = REALM_PASSES[id].a;
+    const q = passPoint(id, PASS_LIP - 4), a = REALM_PASSES[id].a;
     return { x: q.x, z: q.z, face: Math.atan2(-Math.cos(a), -Math.sin(a)) };
   }
 
   update(dt, t, state) {
-    this.mist.material.uniforms.uTime.value = t;
+    let changed = false;
     for (const c of this.list) {
       const open = state.schoolUnlocked(c.id);
-      if (open !== c.open) { c.open = open; c.whole.visible = open; c.broken.visible = !open; }
-      c.runeMat.emissiveIntensity = open ? 1.4 + Math.sin(t * 2 + c.road) * 0.4 : 0.15;
+      if (open !== c.open) { c.open = open; c.mouth.open.visible = open; c.mouth.locked.visible = !open; changed = true; }
     }
+    if (changed) this.colliders = this.list.flatMap((c) => (c.open ? c.stat : [...c.stat, ...c.block]));
+    const g = this.game, exit = g.realm?.exit?.userData;
+    for (const f of [...this.flames, ...(exit?.flames || [])]) { f.scale.y = 1 + Math.sin(t * 11 + f.id) * 0.12 + Math.sin(t * 17.3 + f.id * 2) * 0.08; f.scale.x = f.scale.z = 1 - (f.scale.y - 1) * 0.5; }
+    for (const q of [...this.glows, ...(exit?.glows || [])]) q.mat.emissiveIntensity = q.k * (0.85 + Math.sin(t * 1.7 + q.k) * 0.15);
+    if (this.smoke) this.smoke.material.uniforms.uTime.value = t;
+    // The far realms take the sky's colour through the day (they ignore the fog, so haze them here).
+    if (g.scene.fog) HAZE.uFog.value.copy(g.scene.fog.color);
     // Weather and motes in the realms' edges of the valley, round the apprentice.
-    const g = this.game;
     if (g.realm || g.inside || !g.particles) return;
     const p = g.player.pos, { id, k } = this.bleedHere(p), P = g.particles;
     if (k < 0.15) return;
@@ -295,36 +484,15 @@ export class Crossings {
   }
 }
 
-// The realm's end of the bridge: a short run of deck leading back into fog, tinted with the
-// valley's green. Stepping into it takes you home.
-export function realmBridgehead(color) {
-  const g = new THREE.Group(), wood = clay('#9a6a3e', { roughness: 0.8, key: 'bridgeWood' }), dark = clay('#6e4a2a', { roughness: 0.8, key: 'bridgeWoodDark' });
-  const stone = clay('#a39aa8', { roughness: 0.75, key: 'bridgeStone' });
-  const planks = new THREE.InstancedMesh(new THREE.BoxGeometry(DECK_W * 2 + 0.3, 0.14, 0.5), wood, 30), m = new THREE.Matrix4();
-  for (let i = 0; i < 30; i++) planks.setMatrixAt(i, m.compose(new THREE.Vector3(0, 0.35 - i * 0.02, i * 0.62), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, (Math.random() - 0.5) * 0.05, 0)), new THREE.Vector3(1, 1, 1)));
-  planks.castShadow = true; planks.receiveShadow = true;
-  g.add(planks);
-  for (const side of [-1, 1]) {
-    const p = new THREE.Mesh(new RoundedBoxGeometry(1.0, 3.6, 1.0, 3, 0.18), stone); p.position.set(side * (DECK_W + 1.1), 1.6, -0.5); p.castShadow = true;
-    const cap = new THREE.Mesh(new THREE.OctahedronGeometry(0.42), new THREE.MeshStandardMaterial({ color, emissive: color, emissiveIntensity: 1.4 }));
-    cap.position.set(side * (DECK_W + 1.1), 3.85, -0.5);
-    g.add(p, cap);
-    for (let z = 0; z < 18; z += 4.5) {
-      const post = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.12, 1.3, 7), dark); post.position.set(side * (DECK_W + 0.1), 0.9 - z * 0.03, z); g.add(post);
-    }
-    const rope = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([0, 4.5, 9, 13.5].map((z) => new THREE.Vector3(side * (DECK_W + 0.1), 1.5 - z * 0.03, z))), 16, 0.05, 5), clay('#d8bf8a', { roughness: 0.9, key: 'bridgeRope' }));
-    g.add(rope);
-  }
-  // The fog bank the bridge disappears into.
-  const puffs = [], rnd = mulberry32(99), tint = new THREE.Color('#d8f0c8');
-  for (let i = 0; i < 40; i++) puffs.push([(rnd() - 0.5) * 16, -2 + rnd() * 9, 9 + rnd() * 14, 5 + rnd() * 7, tint.r, tint.g, tint.b, 0.4 + rnd() * 0.25]);
-  const geo = new THREE.InstancedBufferGeometry().copy(new THREE.PlaneGeometry(1, 1));
-  geo.instanceCount = puffs.length;
-  geo.setAttribute('aPuff', new THREE.InstancedBufferAttribute(new Float32Array(puffs.flatMap((q) => q.slice(0, 4))), 4));
-  geo.setAttribute('aTint', new THREE.InstancedBufferAttribute(new Float32Array(puffs.flatMap((q) => q.slice(4))), 4));
-  const fog = new THREE.Mesh(geo, mistMaterial());
-  fog.frustumCulled = false; fog.renderOrder = 5;
-  g.add(fog);
-  g.userData = { fog, noCut: true };
-  return g;
+
+// The realm's end of the way: the same mouth, standing in the realm as a hill of its own, level
+// inside. Walking in takes you home.
+export function realmThreshold(id, color) {
+  const m = buildMouth(id, color, mulberry32(id.length * 131 + 7), { flat: true });
+  m.open.visible = true; m.locked.visible = false;
+  const cols = [...m.cols];
+  for (let z = -1.5; z <= TUNNEL_LEN; z += 0.9) for (const side of [-1, 1]) cols.push({ x: side * (TUNNEL_HALF + 0.35), z, radius: 0.5 });
+  for (let x = TUNNEL_HALF + 0.9; x < 16; x += 1.2) for (const side of [-1, 1]) cols.push({ x: side * x, z: 0.4, radius: 0.7 });
+  m.root.userData = { flames: m.flames, glows: m.glows, cols };
+  return m.root;
 }

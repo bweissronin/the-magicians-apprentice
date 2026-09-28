@@ -1,4 +1,4 @@
-import { SCHOOLS, SANCTUMS, TOWER_FLOORS, RESOURCES, SHRINES, MASTERY_RANKS, ALTAR_POS } from './data.js';
+import { SCHOOLS, SANCTUMS, TOWER_FLOORS, RESOURCES, SHRINES, MASTERY_RANKS, ALTAR_POS, THRESHOLDS } from './data.js';
 import { CHAPTERS, chapterOf, chapterGoals, chapterLabel, stability, ALDRIC_LETTER, GUARDIANS } from './story.js';
 import { CREATURES } from './bestiary.js';
 
@@ -49,7 +49,7 @@ export class QuestLog {
       return {
         id: d.id, name: sanc.name, where: d.realm, glyph: d.glyph, color: d.color, open, lockWhy: s.gateBlock(d.id), hint: d.needs.hint,
         built: s.sanctumStage(d.id), steadies: sanc.steadies,
-        buildAt: `Raise it at the cornerstone in ${d.realm} (cross the bridge at the valley’s edge).`,
+        buildAt: `Raise it at the cornerstone in ${d.realm} (through ${THRESHOLDS[d.id].name} at the valley’s edge).`,
         steps: sanc.stages.map((f) => ({
           name: f.name, lore: f.lore, cost: f.cost,
           reqs: [

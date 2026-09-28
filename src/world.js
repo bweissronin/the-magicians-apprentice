@@ -29,26 +29,46 @@ function baseHeight(x, z) {
 const pads = SHRINES.map((s) => ({ x: s.x, z: s.z, h: Math.max(baseHeight(s.x, s.z), 1.5), r0: 7, r1: 14 }));
 
 // Each realm's pass: a road cut through the mountain ring down to the height of the land at
-// s = 135, then a chasm of mist beyond the lip (see crossings.js for the bridge and the mist).
+// s = 135, running up to a face of rock at PASS_LIP. The way in (crossings.js) is cut into that
+// face: a slot at road height that slopes gently down into the mountain, roofed over by the
+// tunnel, cleft or barrow built there.
 const PASSES = Object.entries(REALM_PASSES).map(([id, P]) => {
   const ux = Math.cos(P.a), uz = Math.sin(P.a), q = passPoint(id, 135);
   return { id, ux, uz, road: Math.max(baseHeight(q.x, q.z), 3) };
 });
 export const passRoadHeight = (id) => PASSES.find((p) => p.id === id).road;
-export const CHASM_FLOOR = -45;
+export const TUNNEL_LEN = 16, TUNNEL_DROP = 2.2, TUNNEL_HALF = 2.6;
+// The floor of the way in at distance s along the pass (level to the face, then down into the dark).
+export const tunnelFloor = (id, s) => passRoadHeight(id) - TUNNEL_DROP * clamp((s - PASS_LIP) / TUNNEL_LEN, 0, 1);
+
+// The last stretch of each road, and the rock face it runs into, stay clear of trees, rocks and
+// flowers so every way in is seen from down the road.
+export function nearWay(x, z, pad = 0) {
+  for (const P of PASSES) {
+    const s = x * P.ux + z * P.uz;
+    if (s < PASS_LIP - 30 - pad) continue;
+    const l = Math.abs(-x * P.uz + z * P.ux);
+    if (l < 9 + pad || (s > PASS_LIP - 3 && l < 24 + pad)) return true;
+  }
+  return false;
+}
 
 function carvePasses(x, z, h) {
   for (const P of PASSES) {
     const s = x * P.ux + z * P.uz;
     if (s < 100) continue;
     const l = Math.abs(-x * P.uz + z * P.ux);
-    // The road: mountains lowered to the road height in a corridor with sloping walls.
-    const kr = smoothstep(104, 128, s) * (1 - smoothstep(8, 22, l));
+    // The road: mountains lowered to the road height in a corridor with sloping walls, up to the face.
+    const kr = smoothstep(104, 128, s) * (1 - smoothstep(8, 22, l)) * (1 - smoothstep(PASS_LIP - 1, PASS_LIP + 1.5, s));
     if (kr > 0) h = lerp(h, Math.min(h, P.road), kr);
-    // The chasm, widening as it runs out into the mist.
-    const cw = 15 + Math.max(0, s - PASS_LIP) * 0.45;
-    const kc = smoothstep(PASS_LIP, PASS_LIP + 3, s) * (1 - smoothstep(cw, cw + 9, l));
-    if (kc > 0) h = lerp(h, CHASM_FLOOR, kc);
+    // The face: the mountain stands up behind the mouth, well above the road.
+    const kf = smoothstep(PASS_LIP - 1, PASS_LIP + 5, s) * (1 - smoothstep(10 + fbm(x * 0.04, z * 0.04, 2) * 4, 26, l));
+    if (kf > 0) h = Math.max(h, P.road + kf * (11 + fbm(x * 0.07, z * 0.07, 3) * 5));
+    // The slot the way runs in, level with the road and sloping down into the mountain.
+    if (s > PASS_LIP - 2 && s < PASS_LIP + TUNNEL_LEN + 2 && l < TUNNEL_HALF + 1.4) {
+      const ks = 1 - smoothstep(TUNNEL_HALF, TUNNEL_HALF + 1.4, l);
+      h = lerp(h, P.road - TUNNEL_DROP * clamp((s - PASS_LIP) / TUNNEL_LEN, 0, 1), ks);
+    }
   }
   return h;
 }
@@ -337,7 +357,7 @@ function buildGrass(rand) {
         transformed.x += sway * 0.08 * position.y;`);
   };
   const spots = placeScatter(rand, 9000, (x, z, h) =>
-    Math.hypot(x, z) > 16 && h > WATER_LEVEL + 0.9 && h < 30 && slopeAt(x, z) < 0.5 && fbm(x * 0.05 + 7, z * 0.05, 2) > -0.1 && !barren(x, z));
+    Math.hypot(x, z) > 16 && h > WATER_LEVEL + 0.9 && h < 30 && slopeAt(x, z) < 0.5 && fbm(x * 0.05 + 7, z * 0.05, 2) > -0.1 && !barren(x, z) && !nearWay(x, z));
   const mesh = new THREE.InstancedMesh(tuftGeometry(), mat, spots.length);
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(), p = new THREE.Vector3(), e = new THREE.Euler();
   const col = new THREE.Color();
@@ -378,7 +398,7 @@ function daisyGeometry() {
 function buildDecor(rand) {
   const group = new THREE.Group();
   const spots = placeScatter(rand, 900, (x, z, h) =>
-    Math.hypot(x, z) > 18 && h > WATER_LEVEL + 1 && h < 22 && slopeAt(x, z) < 0.4 && fbm(x * 0.06, z * 0.06 + 33, 2) > 0.12 && !barren(x, z, 0.25));
+    Math.hypot(x, z) > 18 && h > WATER_LEVEL + 1 && h < 22 && slopeAt(x, z) < 0.4 && fbm(x * 0.06, z * 0.06 + 33, 2) > 0.12 && !barren(x, z, 0.25) && !nearWay(x, z));
   const daisies = new THREE.InstancedMesh(daisyGeometry(), clay('#ffffff', { vertexColors: true, roughness: 0.55, rim: 0.2, key: 'daisy' }), spots.length);
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), e = new THREE.Euler();
   const tints = ['#ffffff', '#ffffff', '#ffffff', '#ffd9ec', '#e6dcff'];

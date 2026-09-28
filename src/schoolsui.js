@@ -1,4 +1,4 @@
-import { SCHOOLS, SANCTUMS, SHRINES, TOWER_FLOORS, MASTERY_RANKS } from './data.js';
+import { SCHOOLS, SANCTUMS, SHRINES, TOWER_FLOORS, MASTERY_RANKS, THRESHOLDS } from './data.js';
 import { ELEMENTS } from './bestiary.js';
 import { GUARDIANS } from './story.js';
 
@@ -97,7 +97,7 @@ export function renderSchools(game, pick) {
         <div class="sc-title"><h3>${o.name}</h3><div class="sc-realm">${o.realm}</div></div>
         <ol class="sc-ladder" style="--n:${o.ladder.length}">${ladder}</ol>
       </header>
-      ${o.locked ? `<div class="sc-sealed"><b>🔒 The bridge is down — ${o.lockWhy}</b><span>${o.hint}</span></div>` : ''}
+      ${o.locked ? `<div class="sc-sealed"><b>🔒 ${THRESHOLDS[o.id].locked} — ${o.lockWhy}</b><span>${o.hint}</span></div>` : ''}
       <p class="sc-blurb">${o.blurb}</p>
       <div class="sc-cols">
         <div><h4>${o.stepsTitle}</h4>${o.stepsNote ? `<div class="sc-note">${o.stepsNote}</div>` : ''}<ul class="sc-steps">${o.steps.map(row).join('')}</ul></div>

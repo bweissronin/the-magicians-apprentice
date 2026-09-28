@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { heightAt, slopeAt, WATER_LEVEL } from './world.js';
+import { heightAt, slopeAt, WATER_LEVEL, nearWay } from './world.js';
 import { mulberry32, fbm } from './util.js';
 import { SHRINES, NODE_TYPES } from './data.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
@@ -168,7 +168,7 @@ export class ResourceManager {
     this.nodes = [];
     const rand = mulberry32(4242);
     const avoid = (x, z, pad = 0) => {
-      if (Math.hypot(x, z) < 34 + pad) return true;
+      if (Math.hypot(x, z) < 34 + pad || nearWay(x, z, pad)) return true;
       for (const s of SHRINES) if (Math.hypot(x - s.x, z - s.z) < 15 + pad) return true;
       return false;
     };

@@ -314,10 +314,20 @@ export const SANCTUMS = {
   },
 };
 export const GATE_POS = { x: 0, z: -30 }; // (retired) the old gate circle north of the courtyard
-// The way to each realm: a pass through the valley's mountain ring in that realm's direction on the
-// atlas, ending at a chasm of mist crossed by a rope bridge. `a` is the heading (atan2(z, x)).
-// LIP is where the road meets the chasm; the bridge runs out to END, where the mist takes you.
+// The way to each realm: a road through the valley's mountain ring in that realm's direction on the
+// atlas, ending where it runs into the mountain itself. `a` is the heading (atan2(z, x)).
+// LIP is the mountain face, where the way goes in (a mine, a cleft, a cave, a barrow); a few steps
+// inside, at LIP + THRESHOLD_IN, you are through. (PASS_END is kept for the old save/test maths.)
 export const PASS_LIP = 150, PASS_END = 181;
+export const THRESHOLD_IN = 7;
+// How each way looks and reads. The same mouth stands on both sides: you walk into it in the valley
+// and step out of it in the realm. `fade` tints the crossing (dark underground, white in the ice).
+export const THRESHOLDS = {
+  necromancy: { name: 'the Barrow Gate', title: 'The Barrow Gate', locked: 'The Barrow Gate is chained shut', enter: 'Walk down into the barrow', fade: '#141a17' },
+  geomancy: { name: 'the Old Mine', title: 'The Old Mine', locked: 'The Old Mine has caved in', enter: 'Follow the rails down into the dark', fade: '#050403' },
+  cryomancy: { name: 'the Glacier Cave', title: 'The Glacier Cave', locked: 'The Glacier Cave is frozen shut', enter: 'Walk on into the ice', fade: '#e6f5ff' },
+  pyromancy: { name: 'the Cinder Road', title: 'The Cinder Road', locked: 'The Cinder Road is walled with cooled lava', enter: 'Walk on through the cleft', fade: '#3a1206' },
+};
 export const REALM_PASSES = {
   necromancy: { a: Math.PI },          // west
   geomancy: { a: -Math.PI / 2 },       // north

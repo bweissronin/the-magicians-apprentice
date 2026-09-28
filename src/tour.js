@@ -114,9 +114,9 @@ export function valleyTour(game, onDone) {
   const stops = [
     { pos: new THREE.Vector3(0, 75, 120), look: new THREE.Vector3(0, 6, 0), title: 'The Valley', sub: 'Home', text: 'Master Aldric\'s valley — and the Veil above it, torn.' },
     { pos: new THREE.Vector3(20, h(0, 0) + 20, 26), look: new THREE.Vector3(0, h(0, 0) + 3, 0), title: 'Aldric\'s Tower', sub: 'In ruins', text: 'It fell the night he walked into the Veil. You will raise it again.' },
-    (() => { // the Hollow's bridge, running out over the mist
-      const from = passPoint('cryomancy', PASS_LIP - 26, -14), to = passPoint('cryomancy', PASS_END);
-      return { pos: new THREE.Vector3(from.x, h(from.x, from.z) + 16, from.z), look: new THREE.Vector3(to.x, h(passPoint('cryomancy', 135).x, passPoint('cryomancy', 135).z), to.z), title: 'The Four Bridges', sub: 'Four realms', text: 'At each edge of the valley a bridge runs out into the mist. Beyond each, one of Aldric\'s sanctums lies fallen too.' };
+    (() => { // the Cinder Road, with the volcano beyond the mountains
+      const from = passPoint('pyromancy', PASS_LIP - 34, -16), to = passPoint('pyromancy', PASS_LIP + 60);
+      return { pos: new THREE.Vector3(from.x, h(from.x, from.z) + 18, from.z), look: new THREE.Vector3(to.x, h(passPoint('pyromancy', 135).x, passPoint('pyromancy', 135).z) + 26, to.z), title: 'The Four Ways', sub: 'Four realms', text: 'At each edge of the valley a road runs into the mountains: an old mine, a cinder road, a glacier cave and a barrow gate. Each leads to one of the four realms, and you can see them waiting on the horizon.' };
     })(),
   ];
   for (const sh of [...SHRINES].sort((a, b) => Math.atan2(a.x, -a.z) - Math.atan2(b.x, -b.z)).slice(0, 3)) {
