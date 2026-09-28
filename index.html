@@ -86,7 +86,6 @@
 
     <!-- The satchel sits under the minimap (or the room card indoors); see ui.placeSatchel. -->
     <div id="satchel">
-      <button id="satchel-chip" type="button" title="Show or hide your satchel [V]"><span class="ico">🎒</span><span id="satchel-sum">Satchel</span><kbd>V</kbd></button>
       <div id="inventory"></div>
     </div>
 
@@ -102,7 +101,11 @@
     <div id="waypoint" class="hidden"><div class="wp-diamond"></div><span id="wp-dist"></span></div>
     <div id="banner" class="hidden"></div>
     <div id="lockhint" class="hidden">Click to take control</div>
-    <div id="controls-hint"><kbd>H</kbd> Controls</div>
+    <!-- Bottom-right pills: the satchel toggle [V] and the controls legend [H]. -->
+    <div class="hud-br">
+      <button id="satchel-chip" type="button" title="Show or hide your satchel [V]"><kbd>V</kbd> <span class="ico">🎒</span> <span id="satchel-sum">Satchel</span></button>
+      <div id="controls-hint"><kbd>H</kbd> Controls</div>
+    </div>
     <div id="target-info" class="hidden">
       <div class="ti-name">Shadow Wisp <span class="ti-lock"></span></div>
       <div class="ti-wards"></div>

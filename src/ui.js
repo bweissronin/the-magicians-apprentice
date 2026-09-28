@@ -107,8 +107,15 @@ export class UI {
         if (r.width && r.right > innerWidth - 40) bottom = Math.max(bottom, r.bottom);
       }
     }
-    const top = `${Math.round(bottom + 10)}px`;
-    if ($('satchel').style.top !== top) $('satchel').style.top = top;
+    let top = bottom + 10;
+    const br = document.querySelector('.hud-br');
+    if (document.body.classList.contains('touch')) { // the toggle heads the column on phones
+      const t = `${Math.round(top)}px`;
+      if (br.style.top !== t) br.style.top = t;
+      top += 40;
+    }
+    const px = `${Math.round(top)}px`;
+    if ($('satchel').style.top !== px) $('satchel').style.top = px;
   }
 
   applySatchel() {

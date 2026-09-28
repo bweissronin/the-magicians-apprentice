@@ -327,7 +327,7 @@ kbd {
 
 /* ---------- Controls legend ---------- */
 #controls-hint {
-  position: absolute; right: 16px; bottom: 18px; padding: 6px 12px; border-radius: 999px;
+  position: static; padding: 6px 12px; border-radius: 999px;
   background: rgba(14, 10, 30, 0.72); border: 1px solid rgba(255, 255, 255, 0.14);
   font-size: 13px; font-weight: 700; color: var(--ink-dim); transition: border-color 0.2s, color 0.2s;
 }
@@ -1183,3 +1183,12 @@ body.no-hints #satchel-chip kbd, body.touch #satchel-chip kbd { display: none; }
 #satchel .inv .need { margin: 0; min-width: 34px; }
 #toasts { top: auto; bottom: 64px; flex-direction: column-reverse; }
 @media (max-width: 760px) { #satchel #inventory { width: 112px; } #satchel .inv { grid-template-columns: 22px 1fr auto; } #satchel .inv .ico { width: 22px; height: 22px; font-size: 13px; } #satchel .inv .need { display: none; } #satchel { right: 10px; } }
+
+/* Bottom-right: the satchel toggle sits beside the controls pill, styled to match. */
+.hud-br { position: absolute; right: 16px; bottom: 18px; display: flex; gap: 8px; align-items: center; }
+.hud-br #satchel-chip { padding: 6px 12px; font: 700 13px var(--body); color: var(--ink-dim); background: rgba(14, 10, 30, 0.72); border: 1px solid rgba(255, 255, 255, 0.14); gap: 5px; }
+.hud-br #satchel-chip kbd { font-size: 0.78em; }
+.hud-br #satchel-chip .ico { font-size: 13px; }
+body.no-hints .hud-br #satchel-chip kbd { display: none; }
+/* Phones: the corner belongs to the touch buttons, so the toggle heads the satchel column. */
+body.touch .hud-br { bottom: auto; right: 10px; }
