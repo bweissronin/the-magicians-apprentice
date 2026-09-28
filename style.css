@@ -897,8 +897,6 @@ body[data-realm] #room-chip { right: 250px; }
 .bb-phase { font-size: 13.5px; color: var(--ink); text-shadow: 0 1px 4px #000; }
 #target-info.dread { border-color: rgba(255, 122, 154, .9); box-shadow: 0 0 24px rgba(255, 90, 122, .5); }
 #inventory { flex-wrap: wrap; justify-content: center; max-width: min(1180px, 96vw); row-gap: 6px; }
-#inventory.dense .inv .nm { display: none; }
-#inventory.dense .inv { padding-right: 10px; }
 #tour-skip { position: fixed; right: 22px; bottom: 22px; z-index: 30; padding: 7px 14px; border-radius: 999px; font-size: 13.5px; color: var(--ink); background: rgba(14, 10, 30, 0.7); border: 1px solid var(--edge); animation: pulse 2s ease-in-out infinite; }
 body.touring #hud > *:not(#banner) { display: none !important; }
 body.touring #banner { top: auto; bottom: 12%; }
@@ -1151,3 +1149,26 @@ body[data-land="pyromancy"] :is(.modal, #legend, #dialogue, #puzzle, #hud) {
 #room-panel .modal-card h2 { margin-bottom: 14px; }
 #room-panel .floor { padding: 7px 16px; margin-bottom: 7px; }
 #room-panel .floor .num { width: 34px; height: 34px; }
+
+/* ---------- Satchel [V]: resources as labelled cards, or folded to a chip ---------- */
+#satchel { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+#satchel-chip { pointer-events: auto; cursor: pointer; display: inline-flex; align-items: center; gap: 7px; padding: 4px 10px 4px 8px; border-radius: 999px;
+  font: 700 12.5px var(--body); color: var(--ink-dim); background: color-mix(in srgb, var(--pb) 80%, transparent); border: 1px solid rgba(255,255,255,.14); transition: transform .2s, border-color .2s; }
+#satchel-chip:hover { color: var(--ink); border-color: var(--gold); }
+#satchel-chip .ico { font-size: 14px; }
+#satchel-chip kbd { font-size: 10px; }
+#satchel-chip.bump { transform: scale(1.12); border-color: var(--gold); color: var(--ink); }
+#satchel.closed #inventory { display: none; }
+body.no-hints #satchel-chip kbd, body.touch #satchel-chip kbd { display: none; }
+#inventory { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; max-width: min(980px, 94vw); }
+.inv { gap: 8px; padding: 5px 12px 5px 6px; border-radius: 12px; font-size: 14px;
+  background: color-mix(in srgb, var(--pb) 82%, transparent); border: 1px solid color-mix(in srgb, var(--c) 45%, transparent); }
+.inv .ico { width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; font-size: 15px; line-height: 1;
+  background: color-mix(in srgb, var(--c) 28%, #0b0818); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--c) 60%, transparent), 0 0 10px color-mix(in srgb, var(--c) 35%, transparent); }
+.inv .nm { font: 600 12.5px var(--body); color: var(--ink-dim); }
+.inv .n { font: 700 15px var(--body); color: var(--ink); }
+.inv .need { font-size: 11.5px; color: var(--ink-dim); margin-left: -3px; }
+.inv .need:empty { display: none; }
+.inv.short .need { color: #ffb0a0; }
+.inv.met { border-color: rgba(125, 255, 155, .55); }
+.inv.met .need { color: var(--good); }

@@ -266,6 +266,7 @@ class Game {
       if (e.code === 'KeyP' && this.mode === 'play' && !this.inside) this.openBuild(this.realm?.id);
       if (e.code === 'KeyM' && (this.mode === 'play' || this.mode === 'atlas')) this.atlas.toggle();
       if (e.code === 'KeyJ' && (this.mode === 'play' || this.mode === 'questlog')) this.questlog.toggle();
+      if (e.code === 'KeyV' && this.mode === 'play') this.ui.toggleSatchel();
       if (e.code === 'KeyI' && this.mode === 'play' && !this.cinematic) this.openGuide();
       else if (e.code === 'KeyI' && this.mode === 'panel' && this.roomUI.station === 'guide') this.closeRoomPanel();
       const dig = /^Digit([1-5])$/.exec(e.code);

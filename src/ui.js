@@ -70,6 +70,8 @@ export class UI {
   }
   hide() { this.el.hud.classList.add('hidden'); }
 
+  // The satchel: your resources as icon · name · count cards (with "of N" when the next build
+  // needs them). [V] or a click on the chip folds it away; the choice is remembered.
   buildInventory() {
     this.invEls = {};
     this.el.inventory.innerHTML = '';
@@ -77,10 +79,25 @@ export class UI {
       const d = document.createElement('div');
       d.className = 'inv';
       d.title = r.name;
-      d.innerHTML = `<span class="dot" style="background:${r.color};color:${r.color}"></span><span class="n">0</span><span class="nm">${r.name}</span>`;
+      d.style.setProperty('--c', r.color);
+      d.innerHTML = `<span class="ico">${r.glyph}</span><span class="nm">${r.name}</span><b class="n">0</b><small class="need"></small>`;
       this.el.inventory.appendChild(d);
       this.invEls[k] = d;
     }
+    try { this.satchelOpen = localStorage.getItem('satchelOpen') !== '0'; } catch { this.satchelOpen = true; }
+    $('satchel-chip').onclick = () => this.toggleSatchel();
+    this.applySatchel();
+  }
+
+  toggleSatchel() {
+    this.satchelOpen = !this.satchelOpen;
+    try { localStorage.setItem('satchelOpen', this.satchelOpen ? '1' : '0'); } catch {}
+    this.applySatchel();
+    this.game.audio.play('ui');
+  }
+
+  applySatchel() {
+    $('satchel').classList.toggle('closed', !this.satchelOpen);
   }
 
   buildSpellbar() {
@@ -229,7 +246,7 @@ export class UI {
   }
 
   bumpItem(key) {
-    const d = this.invEls[key];
+    const d = this.satchelOpen ? this.invEls[key] : $('satchel-chip');
     if (!d) return;
     d.classList.add('bump');
     setTimeout(() => d.classList.remove('bump'), 220);
@@ -395,15 +412,21 @@ export class UI {
     this.el.daynight.textContent = g.world.night > 0.5 ? '☾' : '☀';
     // Only what you hold, plus whatever the next thing you're building needs (so a 0 there reads
     // as "go get some"). Everything else lives in the pause screen.
-    const want = new Set(Object.keys(TOWER_FLOORS[s.floors]?.cost || {}));
-    if (g.realm) Object.keys(s.nextSanctumStage(g.realm.id)?.cost || {}).forEach((k) => want.add(k));
+    const need = { ...(TOWER_FLOORS[s.floors]?.cost || {}), ...(g.realm ? s.nextSanctumStage(g.realm.id)?.cost || {} : {}) };
+    let held = 0;
     for (const [k, d] of Object.entries(this.invEls)) {
-      const n = d.querySelector('.n');
-      if (n.textContent !== String(s.inv[k])) n.textContent = s.inv[k];
-      d.classList.toggle('hidden', !(s.inv[k] > 0 || want.has(k)));
+      const n = d.querySelector('.n'), have = s.inv[k], want = need[k];
+      if (n.textContent !== String(have)) n.textContent = have;
+      const nd = want ? `of ${want}` : '';
+      const ne = d.querySelector('.need');
+      if (ne.textContent !== nd) ne.textContent = nd;
+      d.classList.toggle('short', !!want && have < want);
+      d.classList.toggle('met', !!want && have >= want);
+      d.classList.toggle('hidden', !(have > 0 || want));
+      if (have > 0) held++;
     }
-    const shown = Object.values(this.invEls).filter((d) => !d.classList.contains('hidden')).length;
-    this.el.inventory.classList.toggle('dense', shown > 10);
+    const sum = held ? `Satchel · ${held}` : 'Satchel';
+    if ($('satchel-sum').textContent !== sum) $('satchel-sum').textContent = sum;
     // Spell slots appear as they're learned; only the next level-spell shows (locked) as a teaser.
     const tease = SPELLS.filter((sp) => !sp.school && !s.hasSpell(sp.id)).sort((a, b) => a.level - b.level)[0];
     for (const sp of SPELLS) {
@@ -819,6 +842,7 @@ export class UI {
         ${row(k('E'), 'Interact', 'Talk, build, begin a trial')}
         ${row(k('P'), 'Tower plans', 'What the next floor needs')}
         ${row(k('B'), 'Bestiary', 'Creatures, weaknesses and drops')}
+        ${row(k('V'), 'Satchel', 'Show or hide your resources')}
         ${row(k('E'), 'Enter your tower', 'At the gold portal by the steps')}
         ${row(k('E'), 'Use a room', 'Stair pads and room stations')}
       </section>

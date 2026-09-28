@@ -30,6 +30,7 @@ Then open http://localhost:5180.
 | R | Fireball (Master of Pyromancy) |
 | T | Earthen Stair (Master of Geomancy) |
 | B | The bestiary journal |
+| V | Satchel: show or hide your resources (icon, name and count, plus “of N” when the next build needs them) |
 | J | Quest log. **Story**: every chapter (done, current with each goal, still to come). **Towers**: the Arcane tower and each sanctum, with every floor or stage and, for the next one, the level, rank or guardian it needs and each material you have against its cost, with where to get the rest |
 | M | World atlas: click a land, or pick it in the side panel, for its progress, landmarks and travel. A gold star marks your current goal |
 | I | Room guide — what this tower room is for (outside: the whole tower) |
@@ -115,7 +116,7 @@ Missing reagents in any build plan link to the creature that carries them, and *
 
 ## The loop
 
-1. **Gather**: Timber, Stone, Aether Crystal (Lv 2) and Mana Essence (Lv 3) in the valley; each realm has its own material (Grave Bone, Heartstone, Frost Shard, Ember Core). Creatures carry the reagents. Chain harvests (the next node within 7 s) for up to 48% faster gathering. Until the Study stands, *Aldric's charm* doubles valley timber and stone. The HUD shows only what you hold plus what the next build needs; the full satchel is on the pause screen.
+1. **Gather**: Timber, Stone, Aether Crystal (Lv 2) and Mana Essence (Lv 3) in the valley; each realm has its own material (Grave Bone, Heartstone, Frost Shard, Ember Core). Creatures carry the reagents. Chain harvests (the next node within 7 s) for up to 48% faster gathering. Until the Study stands, *Aldric's charm* doubles valley timber and stone. The satchel [V] shows only what you hold plus what the next build needs, each with its icon, name and count; fold it to a chip with V (the choice is remembered).
 2. **Solve shrines**: five Rune Shrines grant the **Arcane Sigils** the upper floors need: *Echoing Runes* (memory), *Ley-Line Nexus* (lights-out) and *Astral Lock* (coupled rings).
 3. **Build the Arcane tower**: Foundation, Study, Library, Alchemy Lab, Observatory and the Arcane Spire. The Spire is a tower that holds every element: it needs every realm's material and one of every reagent. Step inside to use each floor's station, including the Study's Spell Tome (Radiance, Empowered Bolt, Deep Well, Swift Blink, Green Thumb, Deep Stair, Glacial Stride) and its bestiary lectern.
 4. **Master the schools**: at each edge of the valley, in its direction on the atlas, a road climbs through a pass to a chasm of cloud. A rope bridge crosses it into fog tinted with the realm's colour: walk into the fog and you're there (walk back into it to come home). A sealed realm's bridge is missing its middle planks, and it mends when the way opens. Before you reach the pass, each realm is already seeping into the valley: snow and pines toward the Glacial Hollow, grey grass, graves and mist toward the Hollow Crypt, russet rock and crystals toward the Sundered Deep, and ash, basalt and glowing cracks toward the Ember Caldera. You hear it too. The bridges open onto four realms, each as wide as the valley, with two puzzles, four landmarks, a hazard and a creature. Initiate rank teaches the school's element (or Spirit Sight); Master grants its spell.
