@@ -217,7 +217,7 @@ function buildTrophies(state, rand, fx) {
   });
   return {
     group: g,
-    station: { x: Math.sin(TROPHY_A) * (R - 2.4), z: -Math.cos(TROPHY_A) * (R - 2.4), label: `${ROOMS[0].stationLabel}`, sub: `${state.shrines.length} of ${SHRINES.length} attuned` },
+    station: { x: Math.sin(TROPHY_A) * (R - 2.4), z: -Math.cos(TROPHY_A) * (R - 2.4), label: `${ROOMS[0].stationLabel}`, sub: `${state.shrines.length} of ${SHRINES.length} awakened` },
     update(dt, t) { sigils.forEach((s, i) => { s.rotation.y += dt; s.position.y = 1.95 + Math.sin(t * 2 + i) * 0.06; }); },
   };
 }
@@ -418,7 +418,7 @@ function buildObservatory(state, rand, fx) {
   [0.6, -0.6].forEach((a) => g.add(atWall(bookshelf(2.2, 3.0, rand), a, 0.45)));
   return {
     group: g,
-    station: { x: 0, z: 0.2, label: ROOMS[4].stationLabel, sub: 'Fast travel to attuned shrines' },
+    station: { x: 0, z: 0.2, label: ROOMS[4].stationLabel, sub: 'Fast travel to awakened shrines' },
     solid: [{ x: 0, z: -2.3, radius: 0.8 }, { x: 4.5, z: 2.5, radius: 0.6 }],
     update(dt, t) { planets.forEach((p) => { const a = t * p.userData.speed; p.position.set(Math.cos(a) * p.userData.rad, 0, Math.sin(a) * p.userData.rad); }); },
   };

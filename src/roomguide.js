@@ -12,7 +12,7 @@ const ARCANE = {
   trophies: {
     gist: 'Your checklist of rune-shrine Sigils',
     blurb: 'The foot of Aldric\'s tower — and yours, now. Every Sigil you win at a rune shrine comes to rest here.',
-    does: [{ icon: '◆', what: 'Admire your Sigils', how: 'See which of the five rune shrines you have attuned, and which trial each of the others holds.',
+    does: [{ icon: '◆', what: 'Admire your Sigils', how: 'See which of the five rune shrines you have awakened, and which trial each of the others holds.',
       value: 'Every new floor of the tower costs an Arcane Sigil. This hall shows you where the next one is waiting.',
       status: (g) => `${g.state.shrines.length} of ${SHRINES.length} Sigils gathered` }],
   },
@@ -36,7 +36,7 @@ const ARCANE = {
     blurb: 'Shelves that remember every word read aloud to them.',
     does: [{ icon: '❦', what: 'Consult the Lectern', how: 'Step-by-step hints for the next shrine puzzle you haven\'t solved, and a page of Aldric\'s lore each visit.',
       value: 'Stuck on a shrine? The lectern explains how its puzzle works — and how to beat it.',
-      status: (g) => { const n = SHRINES.find((x) => !g.state.shrines.includes(x.id)); return n ? `Next trial: ${n.name}` : 'Every shrine is attuned'; } }],
+      status: (g) => { const n = SHRINES.find((x) => !g.state.shrines.includes(x.id)); return n ? `Next trial: ${n.name}` : 'Every shrine is awake'; } }],
   },
   brew: {
     gist: 'Brew potions from essence',
@@ -49,10 +49,10 @@ const ARCANE = {
       } }],
   },
   travel: {
-    gist: 'Fast travel to attuned shrines',
+    gist: 'Fast travel to awakened shrines',
     blurb: 'The sky is a book. Here you learn to read it.',
-    does: [{ icon: '✧', what: 'Look through the Telescope', how: 'Fold the sky and step out at your courtyard or at any rune shrine you have attuned.',
-      value: 'Saves the long walk across the valley. Every shrine you attune adds a destination.',
+    does: [{ icon: '✧', what: 'Look through the Telescope', how: 'Fold the sky and step out at your courtyard or at any rune shrine you have awakened.',
+      value: 'Saves the long walk across the valley. Every shrine you awaken adds a destination.',
       status: (g) => `${count(g.state.shrines.length + 1, 'destination')} charted` }],
   },
   lookout: {

@@ -593,7 +593,7 @@ export class UI {
         if (sm.textContent !== sub) sm.textContent = sub;
       } else if (l.extra) {
         const solved = this.state.shrines.includes(l.extra.def.id);
-        const sub = solved ? 'Attuned ✓' : this.state.level >= l.extra.def.level ? 'Trial awaits' : `Requires level ${l.extra.def.level}`;
+        const sub = solved ? 'Awakened ✓' : this.state.level >= l.extra.def.level ? 'Trial awaits' : `Requires level ${l.extra.def.level}`;
         const sm = l.el.querySelector('small');
         if (sm.textContent !== sub) sm.textContent = sub;
         l.el.classList.toggle('solved', solved);

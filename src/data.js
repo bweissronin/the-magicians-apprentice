@@ -36,7 +36,7 @@ export const rankFor = (level) => RANKS.filter((r) => level >= r.level).pop().ti
 export const NODE_TYPES = {
   tree:    { verb: 'Charm',    yields: { wood: [3, 5] },    time: 1.6, xp: 8,  respawn: 90 },
   rock:    { verb: 'Shape',  yields: { stone: [3, 5] },   time: 1.9, xp: 8,  respawn: 100 },
-  crystal: { verb: 'Attune',  yields: { crystal: [2, 3] }, time: 2.4, xp: 14, respawn: 120, minLevel: 2 },
+  crystal: { verb: 'Gather',  yields: { crystal: [2, 3] }, time: 2.4, xp: 14, respawn: 120, minLevel: 2 },
   flower:  { verb: 'Distill', yields: { essence: [1, 2] }, time: 1.4, xp: 12, respawn: 80, minLevel: 3 },
   // Realm nodes.
   bones:   { verb: 'Exhume',      name: 'Bone Pile',     yields: { bone: [2, 4] },  time: 1.7, xp: 12, respawn: 55 },

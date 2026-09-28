@@ -632,7 +632,7 @@ class Game {
     }
     const sh = this.shrines.nearest(p, 6.5);
     if (sh) {
-      if (s.shrines.includes(sh.def.id)) return { kind: 'none', label: `${sh.def.name}`, sub: 'Already attuned', locked: true };
+      if (s.shrines.includes(sh.def.id)) return { kind: 'none', label: `${sh.def.name}`, sub: 'Already awakened', locked: true };
       if (s.level < sh.def.level) return { kind: 'none', label: sh.def.name, sub: `The runes won't answer you yet — requires level ${sh.def.level}`, locked: true };
       return { kind: 'shrine', shrine: sh, label: `Begin the trial — ${sh.def.name}` };
     }
@@ -789,8 +789,8 @@ class Game {
       this.state.shrines.push(sh.def.id);
       this.shrines.markSolved(sh.def.id, true);
       this.state.addItem('sigil', 1);
-      this.state.addXP(sh.def.xp, `${sh.def.name} attuned`);
-      this.ui.banner('Shrine Attuned', sh.def.name, 'You received an <b>Arcane Sigil</b>', 4000);
+      this.state.addXP(sh.def.xp, `${sh.def.name} awakened`);
+      this.ui.banner('Shrine Awakened', sh.def.name, 'You received an <b>Arcane Sigil</b>', 4000);
       this.player.shake = 0.6;
       this.mode = 'play';
       this.save();

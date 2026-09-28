@@ -42,10 +42,10 @@ export class RoomUI {
           const done = s.shrines.includes(sh.id);
           const col = '#' + sh.color.toString(16).padStart(6, '0');
           return `<div class="rp-row ${done ? '' : 'dim'}"><div class="rp-icon" style="--c:${done ? col : '#555'}">◆</div>
-            <div><h3>${sh.name}</h3><div class="lore">${done ? `Attuned — its Sigil hums on your shelf.` : `Unattuned · requires level ${sh.level} · ${PUZZLE_NAMES[sh.puzzle]}`}</div></div>
-            <div>${done ? '<span class="cost ok">Attuned ✓</span>' : ''}</div></div>`;
+            <div><h3>${sh.name}</h3><div class="lore">${done ? `Awakened — its Sigil hums on your shelf.` : `Still asleep · requires level ${sh.level} · ${PUZZLE_NAMES[sh.puzzle]}`}</div></div>
+            <div>${done ? '<span class="cost ok">Awakened ✓</span>' : ''}</div></div>`;
         }).join('');
-        set('Entrance Hall', 'Hall of Sigils', `<p class="rp-intro">Every shrine you attune leaves a Sigil here. ${s.shrines.length} of ${SHRINES.length} gathered.</p>${rows}`);
+        set('Entrance Hall', 'Hall of Sigils', `<p class="rp-intro">Every shrine you awaken leaves a Sigil here. ${s.shrines.length} of ${SHRINES.length} gathered.</p>${rows}`);
         break;
       }
       case 'upgrades': {
@@ -75,7 +75,7 @@ export class RoomUI {
           ? `<div class="rp-hint"><div class="eyebrow">Next trial</div><h3>${next.name} — ${PUZZLE_NAMES[next.puzzle]}</h3>
               <ul>${PUZZLE_HINTS[next.puzzle].map((h) => `<li>${h}</li>`).join('')}</ul>
               ${next.level > s.level ? `<p class="lore">Its runes will only answer a level ${next.level} mage.</p>` : ''}</div>`
-          : `<div class="rp-hint"><h3>Every shrine is attuned.</h3><p class="lore">There is nothing left in these pages you have not already mastered.</p></div>`;
+          : `<div class="rp-hint"><h3>Every shrine is awake.</h3><p class="lore">There is nothing left in these pages you have not already mastered.</p></div>`;
         s.hintsRead++;
         set('Arcane Library', 'The Reading Lectern', `${body}<div class="rp-lore"><div class="eyebrow">From the stacks</div><p>“${lore}”</p></div>`);
         break;
@@ -94,12 +94,12 @@ export class RoomUI {
       }
       case 'travel': {
         const dests = [{ id: 'home', name: 'Tower Courtyard', note: 'Step outside your front door', x: 0, z: 13 }];
-        SHRINES.forEach((sh) => { if (s.shrines.includes(sh.id)) dests.push({ id: sh.id, name: sh.name, note: 'Attuned shrine', x: sh.x, z: sh.z + 9 }); });
+        SHRINES.forEach((sh) => { if (s.shrines.includes(sh.id)) dests.push({ id: sh.id, name: sh.name, note: 'Awakened shrine', x: sh.x, z: sh.z + 9 }); });
         const rows = dests.map((d, i) => `<div class="rp-row"><div class="rp-icon" style="--c:#8fd8ff">✧</div>
           <div><h3>${d.name}</h3><div class="lore">${d.note}</div></div>
           <div><button class="btn primary" data-travel="${i}">Travel</button></div></div>`).join('');
         const locked = SHRINES.length - s.shrines.length;
-        set('Star Observatory', 'The Star Chart', `<p class="rp-intro">The telescope can fold the sky between any place your magic has touched.${locked ? ` Attune more shrines to chart ${locked} more destination${locked > 1 ? 's' : ''}.` : ''}</p>${rows}`);
+        set('Star Observatory', 'The Star Chart', `<p class="rp-intro">The telescope can fold the sky between any place your magic has touched.${locked ? ` Awaken more shrines to chart ${locked} more destination${locked > 1 ? 's' : ''}.` : ''}</p>${rows}`);
         this.el.querySelectorAll('[data-travel]').forEach((b) => { b.onclick = () => this.game.fastTravel(dests[+b.dataset.travel]); });
         break;
       }

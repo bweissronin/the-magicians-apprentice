@@ -75,7 +75,7 @@ export class QuestLog {
       const left = SHRINES.filter((x) => !s.shrines.includes(x.id));
       return { text: left.length ? `Won at a rune shrine — ${left.length} still unsolved` : 'Every shrine is solved' };
     }
-    return { text: { wood: 'Charm trees in the valley', stone: 'Shape boulders in the valley', crystal: 'Attune crystals in the valley (level 2)', essence: 'Distil glowing flowers in the valley (level 3)' }[k] || '' };
+    return { text: { wood: 'Charm trees in the valley', stone: 'Shape boulders in the valley', crystal: 'Gather crystals in the valley (level 2)', essence: 'Distil glowing flowers in the valley (level 3)' }[k] || '' };
   }
 
   render() {

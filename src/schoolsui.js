@@ -15,13 +15,13 @@ function schoolData(s, id) {
     const rank = s.ascended ? 3 : s.floors >= 4 ? 2 : s.floors >= 1 ? 1 : 0;
     const steps = [
       { text: 'Raise the Arcane tower', have: s.floors, of: TOWER_FLOORS.length },
-      { text: 'Attune the valley\'s rune shrines', have: s.shrines.length, of: SHRINES.length },
+      { text: 'Awaken the valley\'s rune shrines', have: s.shrines.length, of: SHRINES.length },
       { text: 'Research Radiance at the Spell Tome', done: s.up('radiance') >= 1 },
       { text: 'Face the Unraveller atop the Spire', done: !!s.finale },
     ];
     return {
       id, name: 'Arcane', glyph: '✦', color: '#9b7bff', realm: 'The Valley & your Tower', rank,
-      blurb: 'The foundation of all magic. Raise your master\'s tower floor by floor and attune the valley\'s shrines; every other school grows from this one.',
+      blurb: 'The foundation of all magic. Raise your master\'s tower floor by floor and awaken the valley\'s shrines; every other school grows from this one.',
       ladder: [['Unstudied', ''], ['Initiate', 'Raise the Foundation'], ['Adept', 'Four floors standing'], ['Master', 'The Unraveller falls']],
       steps, stepsTitle: 'The path', beyond: [],
       rewards: [{ at: 'Master', name: 'The title of Magician', desc: 'Aldric\'s successor, and keeper of the Spire.', got: rank >= 3, glyph: '♛' }],

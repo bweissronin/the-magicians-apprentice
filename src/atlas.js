@@ -156,7 +156,7 @@ export class Atlas {
       <ul class="atl-legend">
         ${key('<svg viewBox="-12 -12 24 24"><path d="M0,-9 L2.6,-2.8 9,-2.8 3.8,1.2 5.8,8 0,4 -5.8,8 -3.8,1.2 -9,-2.8 -2.6,-2.8Z" fill="#f0c34a" stroke="#4a3520" stroke-width="1"/></svg>', 'Your current goal')}
         ${key('<svg viewBox="-12 -12 24 24"><path d="M0,-8 L5.5,6 L0,3 L-5.5,6Z" fill="#e84b8a" stroke="#fff" stroke-width="1.2"/></svg>', 'You')}
-        ${key('<svg viewBox="-12 -12 24 24"><path d="M0,-7 L6,0 L0,7 L-6,0Z" fill="#c9961e" stroke="#4a3520"/></svg>', 'Rune shrine (gold once attuned)')}
+        ${key('<svg viewBox="-12 -12 24 24"><path d="M0,-7 L6,0 L0,7 L-6,0Z" fill="#c9961e" stroke="#4a3520"/></svg>', 'Rune shrine (gold once awakened)')}
         ${key('<svg viewBox="-12 -12 24 24"><circle r="7" fill="#3a2a3e"/><circle cx="-2.5" cy="-1" r="1.6" fill="#e9dcc0"/><circle cx="2.5" cy="-1" r="1.6" fill="#e9dcc0"/></svg>', 'Haunted landmark')}
         ${key('<svg viewBox="-12 -12 24 24"><circle r="8" fill="#f0c34a" opacity=".5"/><path d="M-3,-5 h6 v8 h-6z" fill="#f0c34a" stroke="#4a3520"/></svg>', 'Haunt lifted')}
         ${key('<svg viewBox="-12 -12 24 24"><path d="M0,-7 L5,0 L0,7 L-5,0Z" fill="#8a7cff" stroke="#4a3520"/></svg>', 'Echo Stone heard')}
@@ -172,9 +172,9 @@ export class Atlas {
     const back = '<button class="atl-back" data-overview="1">◂ All lands</button>';
     const stat = (label, have, of) => `<div class="atl-stat"><span>${label}</span><b>${have} / ${of}</b><i class="atl-mini"><i style="width:${(Math.min(1, have / of) * 100).toFixed(0)}%"></i></i></div>`;
     if (id === 'arcane') {
-      const shrines = SHRINES.map((sh) => `<li class="${s.shrines.includes(sh.id) ? 'done' : ''}">${sh.name}<small>${s.shrines.includes(sh.id) ? 'Attuned' : s.level >= sh.level ? 'Trial awaits' : `Level ${sh.level}`}</small></li>`).join('');
+      const shrines = SHRINES.map((sh) => `<li class="${s.shrines.includes(sh.id) ? 'done' : ''}">${sh.name}<small>${s.shrines.includes(sh.id) ? 'Awakened' : s.level >= sh.level ? 'Trial awaits' : `Level ${sh.level}`}</small></li>`).join('');
       return `${back}<div class="atl-page" style="--c:#a792ff"><h3>✦ The Arcane Tower</h3><div class="atl-sub">The valley · your master's tower</div>
-        ${stat('Tower floors', s.floors, TOWER_FLOORS.length)}${stat('Rune shrines attuned', s.shrines.length, SHRINES.length)}
+        ${stat('Tower floors', s.floors, TOWER_FLOORS.length)}${stat('Rune shrines awakened', s.shrines.length, SHRINES.length)}
         <p>${s.floors ? 'Each floor closed a rift over the valley and relit a ley line.' : 'A ruin. Raise the Foundation Stones at the Builder\'s Altar.'}</p>
         <div class="atl-sect">Rune shrines</div><ul class="atl-list">${shrines}</ul>
         <div class="atl-acts">${way.find((w) => w.id === 'arcane') ? '<button class="btn primary" data-travel="arcane">Travel here</button>' : ''}</div></div>`;
@@ -255,7 +255,7 @@ export class Atlas {
     A.push('</g>');
     SHRINES.forEach((sh) => {
       const p = valleyToMap(sh.x, sh.z), done = s.shrines.includes(sh.id);
-      A.push(`<g class="atl-pin"><title>${sh.name} — ${done ? 'attuned' : s.level >= sh.level ? 'its trial awaits' : `level ${sh.level}`}</title>${done ? `<circle cx="${p.x}" cy="${p.y - 12}" r="14" fill="#f0c34a" opacity=".45" filter="url(#aglow)"/>` : ''}<path d="M${p.x},${p.y - 34} L${p.x + 6},${p.y - 27} L${p.x},${p.y - 20} L${p.x - 6},${p.y - 27}Z" fill="${done ? '#f0c34a' : '#fff'}" stroke="#2a1d3a" stroke-width="1.4"/></g>`);
+      A.push(`<g class="atl-pin"><title>${sh.name} — ${done ? 'awakened' : s.level >= sh.level ? 'its trial awaits' : `level ${sh.level}`}</title>${done ? `<circle cx="${p.x}" cy="${p.y - 12}" r="14" fill="#f0c34a" opacity=".45" filter="url(#aglow)"/>` : ''}<path d="M${p.x},${p.y - 34} L${p.x + 6},${p.y - 27} L${p.x},${p.y - 20} L${p.x - 6},${p.y - 27}Z" fill="${done ? '#f0c34a' : '#fff'}" stroke="#2a1d3a" stroke-width="1.4"/></g>`);
     });
     // Realms.
     for (const d of SCHOOLS) {
