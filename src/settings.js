@@ -92,9 +92,9 @@ export class Settings {
     const toggle = (key) => `<button class="toggle ${v[key] ? 'on' : ''}" data-key="${key}" role="switch" aria-checked="${v[key]}"><i></i></button>`;
     const auto = v.quality === 'auto' ? ` <small>(currently ${QUALITY[v.resolved].label})</small>` : '';
     document.getElementById('settings-body').innerHTML = `
-      <section><h3>Graphics</h3>
+      <section class="wide"><h3>Graphics</h3>
         <div class="set-row"><label>Quality${auto}</label>${seg('quality', [['auto', 'Auto'], ['low', 'Low'], ['medium', 'Medium'], ['high', 'High']])}</div>
-        <p class="set-note">Low turns off ambient occlusion, bloom and antialiasing and thins the grass — use it on laptops without a dedicated GPU.</p>
+        <p class="set-note">Low is lighter on laptops without a dedicated graphics card.</p>
       </section>
       <section><h3>Audio</h3>
         <div class="set-row"><label>Master volume</label>${slider('volume', 0, 1, 0.05)}</div>
@@ -106,7 +106,7 @@ export class Settings {
       </section>
       <section><h3>Challenge</h3>
         <div class="set-row"><label>Scholar wards <small>resisted elements do no damage at all</small></label>${toggle('scholar')}</div>
-        <p class="set-note">Off (default): a resisted element still chips a quarter of its damage, so you can always grind through — slowly. On: every fight is a strict elemental puzzle.</p>
+        <p class="set-note">Off by default, so a resisted element still chips a quarter of its damage.</p>
       </section>
       <section><h3>Comfort</h3>
         <div class="set-row"><label>Camera shake</label>${toggle('cameraShake')}</div>

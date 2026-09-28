@@ -1411,6 +1411,9 @@ class Game {
       for (const L of this.realm.land.landmarks) if (Math.hypot(L.x - p.x, L.z - p.z) < L.r + 45) seen[`${this.realm.id}:${L.id}`] = true;
     }
     this.updateCutout(dt, playing);
+    // Every popup takes the colours of the land you're in (style.css: body[data-land]).
+    const land = this.realm?.id || 'arcane';
+    if (document.body.dataset.land !== land) document.body.dataset.land = land;
     this.spellWorld.update(dt, this.elapsed);
     this.wildlife.update(dt, this.elapsed, !this.realm && !this.inside, this.world.night, this.player.pos);
     // In a realm's edge of the valley you start to hear it too.

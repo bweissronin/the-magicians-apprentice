@@ -751,7 +751,7 @@ export class UI {
       const cls = built ? 'built' : next ? 'next' : 'future';
       const costs = Object.entries(f.cost).map(([k, v]) => this.costChip(k, v, built)).join('');
       const lvlOk = s.level >= f.level;
-      const lvl = `<span class="cost ${built ? '' : lvlOk ? 'ok' : 'no'}">Level ${f.level}</span>`;
+      const lvl = `<span class="cost req ${built ? '' : lvlOk ? 'ok' : 'no'}">Level ${f.level}</span>`;
       const can = next && lvlOk && s.canAfford(f.cost);
       const action = built ? '<span class="cost ok">Raised ✓</span>'
         : next ? `<button class="btn ${can ? 'primary' : ''}" data-build="${i}" ${can ? '' : 'disabled'}>Raise</button>` : '';
@@ -775,8 +775,8 @@ export class UI {
       const done = i < built, next = i === built;
       const costs = Object.entries(f.cost).map(([k, v]) => this.costChip(k, v, done)).join('');
       const rankOk = rank >= f.rank, guardOk = !f.guardian || s.guardians.includes(f.guardian);
-      const req = (f.rank ? `<span class="cost ${done ? '' : rankOk ? 'ok' : 'no'}">${MASTERY_RANKS[f.rank]} rank</span>` : '')
-        + (f.guardian ? `<span class="cost ${done ? '' : guardOk ? 'ok' : 'no'}">Defeat ${GUARDIANS[f.guardian].name}${guardOk ? ' ✓' : ''}</span>` : '');
+      const req = (f.rank ? `<span class="cost req ${done ? '' : rankOk ? 'ok' : 'no'}">${MASTERY_RANKS[f.rank]} rank</span>` : '')
+        + (f.guardian ? `<span class="cost req ${done ? '' : guardOk ? 'ok' : 'no'}">Defeat ${GUARDIANS[f.guardian].name}${guardOk ? ' ✓' : ''}</span>` : '');
       const can = next && rankOk && guardOk && s.canAfford(f.cost);
       const action = done ? '<span class="cost ok">Raised ✓</span>'
         : next ? `<button class="btn ${can ? 'primary' : ''}" data-build="${i}" ${can ? '' : 'disabled'}>Raise</button>` : '';
@@ -803,41 +803,51 @@ export class UI {
       return row(spellKeys[sp.id], `${SPELL_ICONS[sp.id]} ${sp.name}`, sub, locked);
     }).join('');
     const reachOn = s.hasSpell('reach');
+    const tabs = [['move', 'Movement'], ['act', 'Actions'], ['spells', 'Spells'], ['combat', 'Combat'], ['menus', 'Menus']];
+    this.legendTab ||= 'move';
     document.getElementById('legend-body').innerHTML = `
-      <section><h3>Movement</h3>
+      <div class="lg-tabs" role="tablist">${tabs.map(([id, name]) => `<button class="lg-tab ${id === this.legendTab ? 'on' : ''}" data-lgtab="${id}">${name}</button>`).join('')}</div>
+      <section data-lg="move"><h3>Movement</h3>
         ${row(k('W') + k('S'), 'Walk forward / back', 'Backing up is slower')}
         ${row(k('A') + k('D') + ' or mouse', 'Turn', 'The camera always follows behind you')}
         ${row(k('Shift'), 'Sprint', 'Hold while walking')}
-        ${row(k('C'), 'Dodge', 'A quick dash — forward with W, sideways with A/D, otherwise back. Nothing can touch you mid-dash')}
+        ${row(k('C'), 'Dodge', 'A quick dash; nothing can touch you mid-dash')}
         ${row(k('Space'), 'Jump')}
       </section>
-      <section><h3>Actions</h3>
-        ${row(k('E') + ' <span class="lg-hold">hold</span>', 'Harvest', `Charm trees, shape boulders, attune crystals, distill blooms — in realms: exhume bones, quench magma, crystallize rime${reachOn ? ' — Far Reach: 2× faster' : ''}`)}
-        ${row(k('E'), 'Interact', 'Talk to Quill, open the altar, begin a shrine trial')}
-        ${row(k('P'), 'Tower plans', 'See what the next floor needs — inside a realm, that school\'s tower plans')}
-        ${row(k('B'), 'Bestiary', 'Aldric\'s journal of creatures: wards, weaknesses, what they carry and where it\'s needed')}
-        ${row(k('E'), 'Enter your tower', 'Stand on the gold portal at the foot of the tower steps')}
-        ${row(k('E'), 'Use a room', 'Stairs pads move between floors; each room has its own station')}
+      <section data-lg="act"><h3>Actions</h3>
+        ${row(k('E') + ' <span class="lg-hold">hold</span>', 'Harvest', `Trees, boulders, crystals and blooms (and each realm's own)${reachOn ? ' · Far Reach: 2× faster' : ''}`)}
+        ${row(k('E'), 'Interact', 'Talk, build, begin a trial')}
+        ${row(k('P'), 'Tower plans', 'What the next floor needs')}
+        ${row(k('B'), 'Bestiary', 'Creatures, weaknesses and drops')}
+        ${row(k('E'), 'Enter your tower', 'At the gold portal by the steps')}
+        ${row(k('E'), 'Use a room', 'Stair pads and room stations')}
       </section>
-      <section><h3>Spells</h3>${spells}</section>
-      <section><h3>Combat</h3>
-        ${row(k('Tab'), 'Target next wisp', 'Cycles through nearby wisps (gold reticle)')}
-        ${row('<span class="lg-passive">auto</span>', 'Threat lock', 'Wisps hunting you are locked automatically (red reticle)')}
-        ${row(k('Click'), 'Bolt the target', 'You turn to face it; bolts home in on a locked foe')}
+      <section data-lg="spells"><h3>Spells</h3>${spells}</section>
+      <section data-lg="combat"><h3>Combat</h3>
+        ${row(k('Tab'), 'Target next wisp', 'Cycle nearby foes')}
+        ${row('<span class="lg-passive">auto</span>', 'Threat lock', 'Foes hunting you lock on by themselves')}
+        ${row(k('Click'), 'Bolt the target', 'Bolts home in on a locked foe')}
         ${row(k('1') + '–' + k('5'), 'Attune your bolt', ELEMENTS.map((e) => `${e.glyph} ${e.name}${s.knows(e.id) ? '' : ' (locked)'}`).join(' · '))}
-        ${row('<span class="lg-passive">rules</span>', 'Wards &amp; weaknesses', 'Weak: double damage and a stagger. Resisted: a quarter. Frost ×3 freezes; Arcane shatters the frozen.')}
+        ${row('<span class="lg-passive">rules</span>', 'Wards &amp; weaknesses', 'Weak: ×2 and a stagger · resisted: ¼')}
       </section>
-      <section><h3>Camera &amp; menus</h3>
+      <section data-lg="menus"><h3>Camera &amp; menus</h3>
         ${row('Mouse up / down', 'Tilt camera')}
         ${row('Scroll wheel', 'Zoom in / out')}
-        ${row(k('K'), 'Schools of Magic', 'Mastery progress for every school and realm')}
-        ${row(k('J'), 'Quest log', 'The chapter, its goals, the Veil\'s seals and what each tower steadies')}
-        ${row(k('M'), 'World atlas', 'Every land, its tower and the Veil\'s cracks — travel between raised towers')}
-        ${row(k('I'), 'Room guide', 'What each room of your tower is for, and what you haven\'t tried yet')}
+        ${row(k('K'), 'Schools of Magic', 'Mastery of each school')}
+        ${row(k('J'), 'Quest log', 'Story and every tower')}
+        ${row(k('M'), 'World atlas', 'Every land; travel between towers')}
+        ${row(k('I'), 'Room guide', 'What each room is for')}
         ${row(k('H'), 'Show / hide this legend')}
         ${row(k('Esc'), 'Pause, save, sound settings')}
         ${row('Click the game', 'Capture the mouse for turning')}
       </section>`;
+    const body = document.getElementById('legend-body');
+    const show = () => {
+      body.querySelectorAll('[data-lg]').forEach((x) => x.classList.toggle('on', x.dataset.lg === this.legendTab));
+      body.querySelectorAll('[data-lgtab]').forEach((b) => b.classList.toggle('on', b.dataset.lgtab === this.legendTab));
+    };
+    body.querySelectorAll('[data-lgtab]').forEach((b) => { b.onclick = () => { this.legendTab = b.dataset.lgtab; show(); this.game.audio.play('ui'); }; });
+    show();
   }
 
   // ----- Schools of Magic -----
@@ -851,14 +861,11 @@ export class UI {
   renderPause() {
     const s = this.state;
     this.el.pauseStats.innerHTML = `
-      <div>Rank<b>${s.rank}</b></div>
-      <div>Level<b>${s.level}</b></div>
+      <div>Level ${s.level}<b>${s.rank}</b></div>
+      <div>Time played<b>${formatTime(s.playTime)}</b></div>
       <div>Tower floors<b>${s.floors} / ${TOWER_FLOORS.length}</b></div>
       <div>Shrines attuned<b>${s.shrines.length} / ${SHRINES.length}</b></div>
-      <div>Resources gathered<b>${s.stats.gathered}</b></div>
-      <div>Wisps banished<b>${s.stats.wisps}</b></div>
-      <div>Spells cast<b>${s.stats.spells}</b></div>
-      <div>Time played<b>${formatTime(s.playTime)}</b></div>`;
+      <p class="pause-minor">${s.stats.gathered} gathered · ${s.stats.wisps} banished · ${s.stats.spells} spells cast</p>`;
     // The whole satchel (the HUD bar only shows what's held or needed next).
     const held = Object.entries(RESOURCES).filter(([k]) => s.inv[k] > 0);
     $('pause-satchel').innerHTML = `<div class="eyebrow">Satchel</div>${held.length

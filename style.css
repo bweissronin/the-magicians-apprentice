@@ -1031,3 +1031,123 @@ body.touring #banner { top: auto; bottom: 12%; }
 
 .quest-more { margin-top: 8px; font-size: 11.5px; color: var(--ink-dim); } .quest-more kbd { font-size: 10px; }
 body.touch .quest-more, body.no-hints .quest-more { display: none; }
+
+/* =====================================================================================
+   Popup themes: every screen takes the colours of the land you're in. main.js sets
+   body[data-land] to arcane (the valley and your tower) or the realm's school.
+     --pa / --pb   the panel's top and bottom colours      --gold  the accent (titles, eyebrows)
+     --edge        the border                               --glow  the accent as a soft light
+     --motif       a faint background pattern that belongs to the land
+   ===================================================================================== */
+:root {
+  --pa: #2a1f58; --pb: #120c28; --glow: rgba(255, 211, 107, 0.16);
+  --motif: radial-gradient(circle at 12% 22%, rgba(255,236,190,0.17) 0 0.9px, transparent 1.7000000000000002px) 0 0 / 89px 89px,
+           radial-gradient(circle at 64% 71%, rgba(255,236,190,0.17) 0 1.0px, transparent 1.8px) 0 0 / 137px 137px,
+           radial-gradient(circle at 38% 55%, rgba(255,236,190,0.17) 0 0.8px, transparent 1.6px) 0 0 / 211px 211px,
+           radial-gradient(120% 60% at 50% -12%, rgba(155,123,255,.22), transparent 70%);
+}
+body[data-land="necromancy"] :is(.modal, #legend, #dialogue, #puzzle, #hud) {
+  --pa: #1f302a; --pb: #0b1411; --gold: #aef5c4; --edge: rgba(174, 245, 196, 0.35); --glow: rgba(157, 255, 192, 0.14);
+  --motif: radial-gradient(130% 45% at 50% 108%, rgba(200, 225, 210, 0.16), transparent 70%),
+           radial-gradient(60% 30% at 15% 95%, rgba(157, 255, 192, 0.10), transparent 70%),
+           radial-gradient(60% 30% at 85% 100%, rgba(157, 255, 192, 0.08), transparent 70%);
+}
+body[data-land="geomancy"] :is(.modal, #legend, #dialogue, #puzzle, #hud) {
+  --pa: #3b2a1b; --pb: #150e09; --gold: #ffc070; --edge: rgba(255, 179, 71, 0.38); --glow: rgba(255, 179, 71, 0.14);
+  --motif: repeating-linear-gradient(174deg, transparent 0 30px, rgba(255, 190, 110, 0.045) 30px 32px),
+           radial-gradient(circle at 80% 18%, rgba(185,140,255,0.17) 0 1.5px, transparent 2.5px) 0 0 / 170px 170px,
+           radial-gradient(120% 55% at 50% 110%, rgba(255, 150, 60, 0.16), transparent 70%);
+}
+body[data-land="cryomancy"] :is(.modal, #legend, #dialogue, #puzzle, #hud) {
+  --pa: #1e3a58; --pb: #0a1626; --gold: #c8f1ff; --edge: rgba(191, 239, 255, 0.4); --glow: rgba(191, 239, 255, 0.14);
+  --motif: radial-gradient(circle at 17% 23%, rgba(255,255,255,0.17) 0 1.0px, transparent 1.8px) 0 0 / 67px 67px,
+           radial-gradient(circle at 71% 58%, rgba(255,255,255,0.17) 0 1.3px, transparent 2.1px) 0 0 / 97px 97px,
+           radial-gradient(circle at 43% 81%, rgba(255,255,255,0.17) 0 0.9px, transparent 1.7000000000000002px) 0 0 / 131px 131px,
+           radial-gradient(circle at 88% 12%, rgba(255,255,255,0.17) 0 1.5px, transparent 2.3px) 0 0 / 173px 173px,
+           radial-gradient(130% 55% at 50% -15%, rgba(120, 255, 210, 0.16), transparent 70%);
+}
+body[data-land="pyromancy"] :is(.modal, #legend, #dialogue, #puzzle, #hud) {
+  --pa: #3d1a12; --pb: #140807; --gold: #ffab5e; --edge: rgba(255, 138, 60, 0.42); --glow: rgba(255, 110, 40, 0.16);
+  --motif: radial-gradient(circle at 29% 68%, rgba(255,150,70,0.17) 0 1.0px, transparent 1.8px) 0 0 / 79px 79px,
+           radial-gradient(circle at 76% 31%, rgba(255,150,70,0.17) 0 0.8px, transparent 1.6px) 0 0 / 113px 113px,
+           radial-gradient(circle at 52% 12%, rgba(255,150,70,0.17) 0 1.2px, transparent 2.0px) 0 0 / 157px 157px,
+           radial-gradient(circle at 9% 88%, rgba(255,150,70,0.17) 0 0.9px, transparent 1.7000000000000002px) 0 0 / 199px 199px,
+           radial-gradient(130% 50% at 50% 112%, rgba(255, 80, 20, 0.26), transparent 70%);
+}
+/* The surfaces themselves. */
+.modal-card, .puzzle-card, .legend-card, #dialogue {
+  background: var(--motif), linear-gradient(170deg, var(--pa), var(--pb) 72%);
+  border: 1px solid var(--edge); border-top: 3px solid var(--gold);
+  box-shadow: 0 30px 90px rgba(0, 0, 0, 0.7), 0 0 60px var(--glow), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.modal-card h2, .puzzle-card h2, .legend-head h2 { text-shadow: 0 0 22px var(--glow); }
+.modal { background: radial-gradient(ellipse at center, rgba(5, 3, 15, 0.35), rgba(5, 3, 15, 0.72)); }
+.modal .btn:hover:not(:disabled), #legend .btn:hover:not(:disabled) { border-color: var(--gold); }
+
+/* ---------- Breathing room ---------- */
+.modal-card, .puzzle-card { padding: 30px 34px; line-height: 1.5; }
+.modal-card h2, .puzzle-card h2 { font-size: 30px; margin: 6px 0 20px; }
+.modal-actions, .puzzle-actions { margin-top: 24px; }
+
+/* Build panels: only the next floor is spelled out. Built ones fold to a line; later ones show
+   just their name and what unlocks them. */
+.floor { padding: 14px 18px; margin-bottom: 10px; }
+.floor.built { grid-template-columns: 32px 1fr auto; padding: 8px 14px; opacity: 0.75; }
+.floor.built .num { width: 28px; height: 28px; font-size: 13px; }
+.floor.built h3 { font-size: 14.5px; }
+.floor.built .lore, .floor.built .costs { display: none; }
+.floor.future { grid-template-columns: 32px 1fr auto; padding: 8px 14px; opacity: 0.5; }
+.floor.future .num { width: 28px; height: 28px; font-size: 13px; }
+.floor.future h3 { font-size: 14.5px; }
+.floor.future .lore, .floor.future .cost:not(.req) { display: none; }
+.floor.future .costs { margin-top: 3px; }
+.floor.next { padding: 18px 20px; margin: 14px 0; border-color: var(--gold); background: color-mix(in srgb, var(--gold) 7%, transparent); box-shadow: 0 0 30px var(--glow); }
+.floor.next h3 { font-size: 20px; }
+.floor.next .lore { font-size: 14px; margin: 4px 0 12px; }
+.floor.next .num { width: 46px; height: 46px; font-size: 18px; }
+.floor.next .costs { gap: 8px; }
+.floor.next .cost { font-size: 13.5px; padding: 5px 12px; }
+.sanctum-blurb { margin: 0 0 14px; color: var(--ink-dim); }
+
+/* ---------- Controls: one tab at a time ---------- */
+.legend-card { width: min(520px, 100%); padding: 22px 26px 18px; }
+.lg-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 14px; }
+.lg-tab { padding: 6px 14px; border-radius: 99px; cursor: pointer; font: 700 13px var(--body); color: var(--ink-dim); background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.12); }
+.lg-tab.on { color: #1b1030; background: var(--gold); border-color: var(--gold); }
+#legend section { display: none; margin: 0; }
+#legend section.on { display: block; }
+#legend section h3 { display: none; }
+.lg-row { grid-template-columns: 130px 1fr; padding: 10px 10px; gap: 14px; }
+.lg-row:nth-child(even) { background: transparent; }
+.lg-row + .lg-row { border-top: 1px solid rgba(255,255,255,.06); }
+.lg-label small { margin-top: 3px; line-height: 1.4; }
+
+/* ---------- Settings: cards in two columns ---------- */
+#settings .modal-card { width: min(820px, 100%); }
+#settings-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; }
+#settings section { margin: 0; padding: 14px 16px; border-radius: 14px; background: rgba(0,0,0,.22); border: 1px solid rgba(255,255,255,.07); }
+#settings section.wide { grid-column: 1 / -1; }
+#settings h3 { margin-bottom: 6px; }
+.set-row { border-bottom: none; padding: 7px 0; }
+.set-row input[type=range] { width: 150px; accent-color: var(--gold); }
+.set-note { line-height: 1.45; }
+@media (max-width: 760px) { #settings-body { grid-template-columns: 1fr; } }
+
+/* ---------- Pause: the headline numbers, then the buttons ---------- */
+.pause-card .stats { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+.pause-card .stats div { padding: 12px 14px; }
+.pause-card .stats b { font-size: 22px; }
+.pause-minor { grid-column: 1 / -1; margin: 2px 0 0; font-size: 12.5px; color: var(--ink-dim); }
+.pause-buttons { gap: 10px; }
+
+/* HUD panels follow the land too, a little see-through. */
+#hud .panel, #room-chip { background: linear-gradient(160deg, color-mix(in srgb, var(--pa) 78%, transparent), color-mix(in srgb, var(--pb) 82%, transparent)); border-color: var(--edge); }
+
+/* Big screens that set their own padding keep it (and their Close button on screen). */
+.modal-card.journal-card { padding: 22px 28px; }
+.modal-card.journal-card h2 { margin-bottom: 14px; }
+/* Room guide: the whole-tower list fits without scrolling. */
+#room-panel .modal-card { padding: 24px 32px 22px; }
+#room-panel .modal-card h2 { margin-bottom: 14px; }
+#room-panel .floor { padding: 7px 16px; margin-bottom: 7px; }
+#room-panel .floor .num { width: 34px; height: 34px; }
