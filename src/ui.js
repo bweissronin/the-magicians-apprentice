@@ -292,7 +292,45 @@ export class UI {
       const d = CREATURES[tk], need = neededFor(d.drop, this.state, 1)[0];
       o.items = [...o.items, { text: `📖 <b>${d.name}</b> → ${RESOURCES[d.drop].name}${need ? ` ${need.have}/${need.need} <small>(${need.where})</small>` : ''}`, done: false }];
     }
+    // A line pinned in the quest log leads the waypoint until it's done.
+    const pin = this.game.pin;
+    if (pin && o.items) {
+      const t = this.pinTarget(pin);
+      if (pin === this.game.pin) {
+        o.items = [{ text: `📍 <b>${pin.label}</b>${t?.via ? ` <small>(${t.via})</small>` : ''}`, done: false }, ...o.items.slice(0, 3)];
+        if (t) o.target = t;
+      }
+    }
     return o;
+  }
+
+  // Where a pin points from here. In another land, the marker leads to the way there first.
+  pinTarget(pin) {
+    const g = this.game, s = this.state, here = g.realm?.id || null, pp = g.player.pos;
+    const done = () => { g.pin = null; this.toast('Pinned goal reached', '#7dff9b'); return null; };
+    if (pin.kind === 'node' && s.inv[pin.res] >= pin.need) return done();
+    if (pin.key.startsWith('raise:')) {
+      const id = pin.key.slice(6), built = id === 'arcane' ? s.floors : s.sanctumStage(id);
+      pin.built ??= built;
+      if (built > pin.built) return done();
+    }
+    if (pin.realm !== here) {
+      if (!here) {
+        const gt = g.gates.list.find((x) => x.def.id === pin.realm);
+        return gt ? { x: gt.x, z: gt.z, via: `cross the bridge to ${gt.def.realm}` } : null;
+      }
+      return { x: g.realm.arrive.x, z: g.realm.arrive.z + 5, via: 'back to the valley first' };
+    }
+    if (pin.kind === 'point') {
+      if (Math.hypot(pin.x - pp.x, pin.z - pp.z) < 5 && !pin.key.startsWith('raise:')) return done();
+      return { x: pin.x, z: pin.z };
+    }
+    if (pin.kind === 'sanctum') { const c = g.realm.stations.find((st) => st.kind === 'sanctum'); return c ? { x: c.x, z: c.z - 2.2 } : null; }
+    // Nearest living node of that material.
+    const nodes = here ? g.realm.nodes.nodes : g.resources.nodes.filter((n) => n.type === NODE_FOR[pin.res]);
+    let best = null, bd = Infinity;
+    for (const n of nodes) { if (!n.alive) continue; const d = Math.hypot(n.x - pp.x, n.z - pp.z); if (d < bd) { bd = d; best = n; } }
+    return best ? { x: best.x, z: best.z, soft: true } : null;
   }
 
   baseObjective() {

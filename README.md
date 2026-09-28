@@ -31,7 +31,7 @@ Then open http://localhost:5180.
 | T | Earthen Stair (Master of Geomancy) |
 | B | The bestiary journal |
 | V | Satchel: show or hide your resources (icon, name and count, plus “of N” when the next build needs them) |
-| J | Quest log. **Story**: every chapter (done, current with each goal, still to come). **Towers**: the Arcane tower and each sanctum, with every floor or stage and, for the next one, the level, rank or guardian it needs and each material you have against its cost, with where to get the rest |
+| J | Quest log. Opens on **Do next**: up to four actions (open chapter goals, and each tower's next floor or stage with only what's still missing, whatever you can raise right now first). Click a line or a missing material to **pin** it and the HUD marker leads there, crossing a bridge first if it's in another land. Beside it: the chapter, the Veil's seals and a row of pips per tower; click through for the story so far or every floor and stage of one tower |
 | M | World atlas: click a land, or pick it in the side panel, for its progress, landmarks and travel. A gold star marks your current goal |
 | I | Room guide — what this tower room is for (outside: the whole tower) |
 | K | Schools of Magic: one tab per school (← / → to browse) with its rank ladder, steps to mastery and rewards |
@@ -54,7 +54,7 @@ Then open http://localhost:5180.
 
 **Every tower room explains itself.** The first time you enter a room of Aldric's tower or a sanctum, its guide opens. It lists what you can do there, why it's worth doing, and a live status line ("3 upgrades affordable now", "Ready to drink", "2 of 4 Echo Stones heard"). It also says what's upstairs, or what the floor above would add once raised. Press **I** any time to reopen it; outside a tower, I shows the whole tower as a directory, and you can read any raised room's guide from there. Stations you haven't used yet carry a floating ✦ sparkle and a *Not tried yet* tag until you do (`&guide=1` shows all this in the debug scenarios).
 
-Chapter changes are announced, and **J** opens the quest log: the chapter's goals, the Veil's 25 seals (the Arcane tower's first five floors plus five stages in each realm tower), what each tower steadies, and Aldric's letter.
+Chapter changes are announced, and **J** opens the quest log: the chapter's goals, the Veil's 25 seals (your tower's first five floors plus five stages in each realm's sanctum), what each tower steadies, and Aldric's letter.
 
 **Quill**, the master's old owl, replaces Aldric by the ruined tower: he keeps the letter, reads from Aldric's notes, and gives chapter-aware advice. Aldric himself only appears at the very end.
 
@@ -183,7 +183,7 @@ Progress autosaves to `localStorage` every 30 s and after every milestone. Older
 | `src/journal.js` | The bestiary journal (B): each creature's live 3D model on a pedestal at the centre, a portrait roster, and cards for weaknesses, drops and study |
 | `src/creaturestage.js` | The bestiary's little studio: renders a creature's in-game model (a silhouette until met) and the roster portraits |
 | `src/story.js` | Chapters, Aldric's letter, Veil stability, and the valley's healing scars (rifts, ley lines, fissures, frost, ash, graves, ruins) |
-| `src/questlog.js` / `src/atlas.js` | Quest log (J): Story and Towers tabs, and the ready-to-raise notice / world atlas and realm charts with tower travel (M) |
+| `src/questlog.js` / `src/atlas.js` | Quest log (J): the do-next list with map pins, story so far and per-tower detail, and the ready-to-raise notice / world atlas and realm charts with travel (M) |
 | `src/haunts.js` | The sixteen haunts and their twists |
 | `src/tour.js` | First-visit bird's-eye tours of the valley and each realm |
 | `src/spellworld.js` | Spells that touch the world: Frost's walkable ice floes, Fire's scorch marks and steam, Radiance's glowing flowers |

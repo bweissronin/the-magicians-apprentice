@@ -1,20 +1,21 @@
-import { SCHOOLS, SANCTUMS, TOWER_FLOORS, RESOURCES, SHRINES, MASTERY_RANKS } from './data.js';
+import { SCHOOLS, SANCTUMS, TOWER_FLOORS, RESOURCES, SHRINES, MASTERY_RANKS, ALTAR_POS } from './data.js';
 import { CHAPTERS, chapterOf, chapterGoals, chapterLabel, stability, ALDRIC_LETTER, GUARDIANS } from './story.js';
 import { CREATURES } from './bestiary.js';
 
 const $ = (id) => document.getElementById(id);
 
-// The quest log (J): where you are and what's next, in two tabs.
-//   Story  — every chapter on one line: done, current (with each goal and how far along it is),
-//            and still to come; the Veil's seals and Aldric's letter.
-//   Towers — the Arcane tower and the four sanctums side by side. Pick one to see every floor or
-//            stage, and for the next one exactly what it needs: level or rank, a guardian, and
-//            each material you have against what it costs, with where to find the rest.
+// The quest log (J) opens on what to do next.
+//   next   — one short to-do list: the chapter's open goals, and for each tower you can work on,
+//            its next floor or stage with only what's still missing. Click a line to pin it: the
+//            HUD waypoint then leads there (across a bridge first if it's in another land).
+//            Beside it, progress at a glance: chapter, seals, and a row of pips per tower.
+//   story  — every chapter so far, one click deeper.
+//   towers — one tower's every floor or stage, and for the next one exactly what it needs.
 export class QuestLog {
   constructor(game) {
     this.game = game;
     this.el = $('questlog');
-    this.tab = 'story';
+    this.tab = 'next';
     this.tower = null;
     $('questlog-close').onclick = () => this.toggle(false);
   }
@@ -79,20 +80,100 @@ export class QuestLog {
   }
 
   render() {
-    const s = this.game.state, towers = this.towers(), readyN = towers.filter((t) => t.ready).length;
+    const towers = this.towers();
     $('questlog-title').textContent = 'Quest Log';
-    const tabs = `<div class="qx-tabs" role="tablist">
-      <button class="qx-tab ${this.tab === 'story' ? 'on' : ''}" data-tab="story">Story <small>${chapterLabel(chapterOf(s))}</small></button>
-      <button class="qx-tab ${this.tab === 'towers' ? 'on' : ''}" data-tab="towers">Tower &amp; Sanctums <small>${stability(s)} / 25 seals${readyN ? ` · <b class="qx-ready">${readyN} ready to raise</b>` : ''}</small></button></div>`;
-    $('questlog-body').innerHTML = tabs + (this.tab === 'story' ? this.storyTab(towers) : this.towersTab(towers));
-    this.el.querySelectorAll('[data-tab]').forEach((b) => { b.onclick = () => { this.tab = b.dataset.tab; this.render(); this.game.audio.play('ui'); }; });
-    this.el.querySelectorAll('[data-tower]').forEach((b) => { b.onclick = () => { this.tab = 'towers'; this.tower = b.dataset.tower; this.render(); this.game.audio.play('ui'); }; });
-    this.el.querySelectorAll('[data-beast]').forEach((b) => { b.onclick = () => { this.toggle(false); this.game.journal.toggle(true, b.dataset.beast); }; });
-    this.el.querySelectorAll('[data-open="schools"]').forEach((b) => { b.onclick = () => { this.toggle(false); this.game.toggleSchools(true); }; });
+    const back = `<button class="qn-back" data-view="next">‹ Next steps</button>`;
+    $('questlog-body').innerHTML = this.tab === 'story' ? back + this.storyTab()
+      : this.tab === 'towers' ? back + this.towersTab(towers) : this.nextView(towers);
+    const on = (sel, fn) => this.el.querySelectorAll(sel).forEach((b) => { b.onclick = (e) => { e.stopPropagation(); fn(b); this.game.audio.play('ui'); }; });
+    on('[data-view]', (b) => { this.tab = b.dataset.view; this.render(); });
+    on('[data-tower]', (b) => { this.tab = 'towers'; this.tower = b.dataset.tower; this.render(); });
+    on('[data-pin]', (b) => { this.pin(this.pins[+b.dataset.pin]); this.render(); });
+    on('[data-all]', () => { this.showAll = !this.showAll; this.render(); });
+    this.el.querySelectorAll('[data-beast]').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); this.toggle(false); this.game.journal.toggle(true, b.dataset.beast); }; });
+    this.el.querySelectorAll('[data-open="schools"]').forEach((b) => { b.onclick = (e) => { e.stopPropagation(); this.toggle(false); this.game.toggleSchools(true); }; });
   }
 
-  storyTab(towers) {
-    const s = this.game.state, n = chapterOf(s), seals = stability(s);
+  // Pin a line (or unpin it if it's already pinned). The HUD resolves where it points each frame.
+  pin(p) {
+    const g = this.game, same = g.pin && p && g.pin.key === p.key;
+    g.pin = same ? null : p;
+    g.ui.toast(same ? 'Pin cleared' : `📍 ${p.label}`, '#ffd36b', same ? '' : 'Follow the marker');
+  }
+
+  // Where a material comes from, as a pin: a node to harvest, a shrine, or a creature to track.
+  gatherPin(k, need) {
+    const s = this.game.state, r = RESOURCES[k], label = `Gather ${need - Math.min(s.inv[k], need)} more ${r.name}`;
+    if (r.reagent) return null; // creatures are tracked from the bestiary instead
+    if (k === 'sigil') { const sh = SHRINES.find((x) => !s.shrines.includes(x.id) && x.level <= s.level); return sh ? { key: 'sigil', label: `Solve ${sh.name}`, realm: null, kind: 'point', x: sh.x, z: sh.z } : null; }
+    return { key: 'res:' + k, label, realm: r.school || null, kind: 'node', res: k, need };
+  }
+
+  nextView(towers) {
+    const s = this.game.state, n = chapterOf(s), goals = chapterGoals(s, n), seals = stability(s), C = CHAPTERS[n - 1], here = this.game.realm?.id || 'arcane';
+    const pinned = this.game.pin?.key;
+    this.pins = [];
+    const pinAttr = (p) => { if (!p) return ''; this.pins.push(p); return `data-pin="${this.pins.length - 1}" role="button" title="Pin on the map"`; };
+    const pinMark = (p) => p ? `<span class="qn-pin ${pinned === p.key ? 'on' : ''}">${pinned === p.key ? '◆ Pinned' : '◇ Pin'}</span>` : '';
+    const items = [];
+    const handled = new Set();
+    // A tower's next step, reduced to what's still missing.
+    const towerItem = (t) => {
+      handled.add(t.id);
+      const st = t.next, sanc = t.id !== 'arcane';
+      const where = sanc ? SCHOOLS.find((d) => d.id === t.id).realm : 'the valley';
+      const raise = sanc ? { key: 'raise:' + t.id, label: `Raise ${st.name}`, realm: t.id, kind: 'sanctum' }
+        : { key: 'raise:arcane', label: `Raise ${st.name}`, realm: null, kind: 'point', x: ALTAR_POS.x, z: ALTAR_POS.z };
+      if (t.ready) {
+        return `<li class="qn-item ready" style="--c:${t.color}" ${pinAttr(raise)}><span class="qn-ico">${t.glyph}</span>
+          <div><b>Raise ${st.name}</b><small>${t.name} · ${sanc ? `the cornerstone in ${where}` : 'the Builder’s Altar'}</small></div><span class="qn-tag">Ready</span>${pinMark(raise)}</li>`;
+      }
+      const miss = [
+        ...st.reqs.filter((r) => !r.ok).map((r) => `<span class="qn-need" ${r.open ? `data-open="${r.open}" role="button"` : ''}>${r.text.replace(/ \(you: .*\)$/, '')}${r.open ? ' ›' : ''}</span>`),
+        ...Object.entries(st.cost).filter(([k, v]) => s.inv[k] < v).map(([k, v]) => {
+          const r = RESOURCES[k], p = this.gatherPin(k, v), src = this.source(k);
+          const attr = p ? pinAttr(p) : r.reagent ? `data-beast="${r.reagent}" role="button" title="${src.text}"` : '';
+          return `<span class="qn-need mat ${p && pinned === p.key ? 'on' : ''}" style="--c:${r.color}" ${attr}><i></i>${r.name} ${Math.min(s.inv[k], v)}/${v}</span>`;
+        }),
+      ].join('');
+      return `<li class="qn-item" style="--c:${t.color}"><span class="qn-ico">${t.glyph}</span>
+        <div><b>Raise ${st.name}</b><small>${t.name} · ${where}</small><div class="qn-needs">${miss}</div></div>
+        <button class="qn-more" data-tower="${t.id}" title="Every ${sanc ? 'stage' : 'floor'}">›</button></li>`;
+    };
+    for (const goal of goals.filter((x) => !x.done)) {
+      const t = towers.find((x) => x.open && x.next && goal.text.includes(x.next.name));
+      if (t) { if (!handled.has(t.id)) items.push({ ready: t.ready, here: t.id === here, html: towerItem(t) }); continue; }
+      const p = goal.target ? { key: 'goal:' + goal.text, label: goal.text.replace(/<[^>]+>/g, ''), realm: null, kind: 'point', x: goal.target.x, z: goal.target.z } : null;
+      const schools = /Initiate|Master/.test(goal.text) ? 'data-open="schools" role="button"' : '';
+      items.push({ html: `<li class="qn-item story" ${p ? pinAttr(p) : schools}><span class="qn-ico">◇</span><div><b>${goal.text}</b><small>${chapterLabel(n)} · ${C.title}</small></div>${p ? pinMark(p) : schools ? '<span class="qn-go">Schools ›</span>' : ''}</li>` });
+    }
+    // Then any other tower that can move forward (ready ones first).
+    for (const t of [...towers].sort((a, b) => b.ready - a.ready)) if (t.open && !t.done && !handled.has(t.id)) items.push({ ready: t.ready, here: t.id === here, html: towerItem(t) });
+    // Something you can raise right now comes first, then the tower of the land you're standing in.
+    items.sort((a, b) => (!!b.ready - !!a.ready) || (!!b.here - !!a.here));
+    const MAX = 4, more = items.length - MAX;
+    const list = items.length ? items.map((i, k) => k < MAX || this.showAll ? i.html : '').join('') : '<li class="qn-empty">Nothing pressing. Explore, banish, and gather for what comes next.</li>';
+
+    const pips = (t) => t.steps.map((_, i) => `<i class="${i < t.built ? 'on' : ''}"></i>`).join('');
+    const rows = towers.map((t) => `<button class="qn-tw ${t.open ? '' : 'dim'}" data-tower="${t.id}" style="--c:${t.color}">
+      <span class="qn-twn">${t.open ? t.glyph : '🔒'} ${t.name.replace(/^The /, '')}</span><span class="qn-pips">${pips(t)}</span>
+      <em>${t.done ? '✓' : t.ready ? '<b class="qx-ready">Ready</b>' : t.open ? '' : 'Locked'}</em></button>`).join('');
+    return `<div class="qn-grid">
+      <section class="qn-do"><h4>Do next</h4><ul class="qn-list">${list}</ul>
+        ${more > 0 ? `<button class="qn-show" data-all="1">${this.showAll ? 'Show fewer' : `Show ${more} more`}</button>` : ''}
+        <p class="qn-note">Pick a line to pin it: the marker on your screen leads the way.</p></section>
+      <aside class="qn-side">
+        <button class="qn-chapter" data-view="story"><small>${chapterLabel(n)} of ${chapterLabel(CHAPTERS.length).replace('Chapter ', '')}</small><b>${C.title}</b>
+          <span class="qx-bar"><i style="width:${(goals.filter((x) => x.done).length / goals.length) * 100}%"></i></span><em>Story so far ›</em></button>
+        <div class="qn-seals"><div><b>${seals}</b> / 25 seals hold the Veil</div><span class="qx-bar gold"><i style="width:${(seals / 25) * 100}%"></i></span>
+          <small>Your tower’s first five floors and every sanctum stage each add a seal.</small></div>
+        <div class="qn-tws">${rows}</div>
+        <details class="qx-letter"><summary>Aldric’s letter</summary>${ALDRIC_LETTER.map((l) => `<p>${l}</p>`).join('')}</details>
+      </aside></div>`;
+  }
+
+  storyTab() {
+    const s = this.game.state, n = chapterOf(s);
     const goalRow = (g) => `<li class="${g.done ? 'done' : ''}"><span class="qx-check">${g.done ? '✓' : ''}</span><span>${g.text}</span></li>`;
     const chapters = CHAPTERS.map((c) => {
       const goals = c.n <= n ? chapterGoals(s, c.n) : [], done = goals.filter((g) => g.done).length;
@@ -111,19 +192,7 @@ export class QuestLog {
       return '';
     }).join('') + (CHAPTERS.length > n + 1
       ? `<div class="qx-road">${CHAPTERS.slice(n + 1).map((c) => `<i>${c.n}</i>`).join('')}<span>${CHAPTERS.length - n - 1} more chapter${CHAPTERS.length - n - 1 > 1 ? 's' : ''}, still veiled</span></div>` : '');
-    // A compact line per tower, linking to the Towers tab.
-    const strip = towers.map((t) => `<button class="qx-strip ${t.open ? '' : 'dim'}" data-tower="${t.id}" style="--c:${t.color}">
-      <span class="qx-glyph">${t.open ? t.glyph : '🔒'}</span><span><b>${t.name}</b><i class="qx-mini"><i style="width:${(t.built / t.steps.length) * 100}%"></i></i></span>
-      <em>${t.done ? 'Complete' : t.ready ? '<b class="qx-ready">Ready</b>' : `${t.built} / ${t.steps.length}`}</em></button>`).join('');
-    return `<div class="qx-grid">
-      <div class="qx-chapters">${chapters}</div>
-      <div>
-        <div class="qx-seals"><b>${seals}</b> of 25 seals hold the Veil<div class="qx-bar gold"><i style="width:${(seals / 25) * 100}%"></i></div>
-          <small>Your tower’s first five floors and every sanctum stage each add a seal.</small></div>
-        <div class="qx-sect">Tower &amp; sanctums</div>
-        <div class="qx-strips">${strip}</div>
-        <details class="qx-letter"><summary>Aldric’s letter</summary>${ALDRIC_LETTER.map((l) => `<p>${l}</p>`).join('')}</details>
-      </div></div>`;
+    return `<div class="qx-chapters qn-story">${chapters}</div>`;
   }
 
   towersTab(towers) {
