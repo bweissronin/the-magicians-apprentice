@@ -1172,3 +1172,14 @@ body.no-hints #satchel-chip kbd, body.touch #satchel-chip kbd { display: none; }
 .inv.short .need { color: #ffb0a0; }
 .inv.met { border-color: rgba(125, 255, 155, .55); }
 .inv.met .need { color: var(--good); }
+
+/* The satchel lives under the minimap: a column of cards, right-aligned. Toasts move to the
+   bottom-right corner to make room. */
+#satchel { position: absolute; right: 16px; top: 270px; align-items: flex-end; }
+#satchel #inventory { flex-direction: column; flex-wrap: nowrap; align-items: stretch; width: 216px; max-width: none; gap: 5px; }
+#satchel .inv { display: grid; grid-template-columns: 26px 1fr auto auto; column-gap: 6px; align-items: baseline; padding: 4px 10px 4px 5px; }
+#satchel .inv .ico { align-self: center; }
+#satchel .inv .n { text-align: right; }
+#satchel .inv .need { margin: 0; min-width: 34px; }
+#toasts { top: auto; bottom: 64px; flex-direction: column-reverse; }
+@media (max-width: 760px) { #satchel #inventory { width: 112px; } #satchel .inv { grid-template-columns: 22px 1fr auto; } #satchel .inv .ico { width: 22px; height: 22px; font-size: 13px; } #satchel .inv .need { display: none; } #satchel { right: 10px; } }

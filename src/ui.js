@@ -96,6 +96,21 @@ export class UI {
     this.game.audio.play('ui');
   }
 
+  // Tuck the satchel just under whatever holds the top-right corner: the minimap outdoors, the
+  // room card indoors (or both, in a realm).
+  placeSatchel() {
+    let bottom = 16;
+    for (const q of ['.hud-tr', '#room-chip']) {
+      const e = document.querySelector(q);
+      if (e && !e.classList.contains('hidden')) {
+        const r = e.getBoundingClientRect();
+        if (r.width && r.right > innerWidth - 40) bottom = Math.max(bottom, r.bottom);
+      }
+    }
+    const top = `${Math.round(bottom + 10)}px`;
+    if ($('satchel').style.top !== top) $('satchel').style.top = top;
+  }
+
   applySatchel() {
     $('satchel').classList.toggle('closed', !this.satchelOpen);
   }
@@ -427,6 +442,7 @@ export class UI {
     }
     const sum = held ? `Satchel · ${held}` : 'Satchel';
     if ($('satchel-sum').textContent !== sum) $('satchel-sum').textContent = sum;
+    this.placeSatchel();
     // Spell slots appear as they're learned; only the next level-spell shows (locked) as a teaser.
     const tease = SPELLS.filter((sp) => !sp.school && !s.hasSpell(sp.id)).sort((a, b) => a.level - b.level)[0];
     for (const sp of SPELLS) {
@@ -548,7 +564,7 @@ export class UI {
   updateLabels() {
     const pp = this.game.player.pos;
     // HUD panels a world label must never draw across (it hides instead).
-    const blocks = ['.hud-tl', '#quest', '.hud-tr', '.hud-bottom', '#room-chip', '#toasts', '#reward']
+    const blocks = ['.hud-tl', '#quest', '.hud-tr', '.hud-bottom', '#room-chip', '#toasts', '#reward', '#satchel']
       .map((q) => document.querySelector(q)).filter((e) => e && e.offsetParent && !e.classList.contains('hidden'))
       .map((e) => e.getBoundingClientRect()).filter((r) => r.width > 0);
     for (const l of this.labels) {
@@ -598,11 +614,12 @@ export class UI {
     y = Math.min(innerHeight - bottom, Math.max(top, y));
     // Never sit on the rank / quest panels or the minimap: drop below whichever it lands on, and
     // check again (dropping below one panel can land it on the next).
-    const panels = ['#quest', '.hud-tl', '.hud-tr'].map((q) => document.querySelector(q)?.getBoundingClientRect()).filter((r) => r?.width);
+    const panels = ['#quest', '.hud-tl', '.hud-tr', '#satchel'].map((q) => document.querySelector(q)?.getBoundingClientRect()).filter((r) => r?.width);
     for (let pass = 0; pass < 3; pass++) {
       const r = panels.find((r) => x > r.left - 24 && x < r.right + 24 && y > r.top - 34 && y < r.bottom + 24);
       if (!r) break;
-      y = r.bottom + 28;
+      // Step left of a tall right-hand column (the satchel); drop below anything else.
+      if (r.right > innerWidth - 40 && r.height > 160) x = r.left - 34; else y = r.bottom + 28;
     }
     wp.style.left = `${x}px`; wp.style.top = `${y}px`;
     wp.style.opacity = t.soft ? '0.6' : '1';
