@@ -1,0 +1,12 @@
+# OS / editor
+.DS_Store
+
+# Python caches from the Blender build scripts
+__pycache__/
+
+# Third-party texture downloads (ambientCG, CC0) used only when rendering in Blender;
+# re-download them into tools/blender/sources/textures/<id>/ (see README).
+tools/blender/sources/textures/
+
+# Local session state
+.claude/scheduled_tasks.lock

@@ -1,0 +1,240 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>The Magician's Apprentice</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Alegreya+Sans:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="puzzles-deep.css" />
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.module.js",
+      "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.170.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <canvas id="game"></canvas>
+
+  <!-- Loading -->
+  <div id="loading" class="screen show">
+    <div class="loader-sigil"></div>
+    <p>Weaving the valley…</p>
+  </div>
+
+  <!-- Title -->
+  <div id="title" class="screen">
+    <div class="title-inner">
+      <div class="eyebrow">A tale of stone, starlight & stubbornness</div>
+      <h1>The Magician's<br /><span>Apprentice</span></h1>
+      <p class="tagline">Gather the valley's gifts. Solve the ancient shrines. Raise your tower — and become a Magician.</p>
+      <div class="title-buttons">
+        <button class="btn primary" id="btn-continue">Continue</button>
+        <button class="btn primary" id="btn-new">Begin Apprenticeship</button>
+        <button class="btn" id="btn-title-settings">Settings</button>
+      </div>
+      <div class="controls-grid">
+        <div><kbd>W</kbd><kbd>S</kbd> Walk forward / back</div>
+        <div><kbd>A</kbd><kbd>D</kbd> or <kbd>Mouse</kbd> Turn</div>
+        <div><kbd>Shift</kbd> Sprint</div>
+        <div><kbd>Space</kbd> Jump</div>
+        <div><kbd>E</kbd> Interact / hold to harvest</div>
+        <div><kbd>Click</kbd> Arcane Bolt · <kbd>Tab</kbd> Target</div>
+        <div><kbd>Q</kbd> Blink · <kbd>F</kbd> Nova</div>
+        <div><kbd>B</kbd> Tower plans · <kbd>K</kbd> Schools</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud" class="hidden">
+    <div id="labels"></div>
+    <div id="hurt"></div>
+    <div class="hud-tl panel">
+      <div class="rank-row">
+        <div class="level-badge"><span id="hud-level">1</span></div>
+        <div class="rank-text">
+          <div id="hud-rank" class="rank">Novice Apprentice</div>
+          <div class="bar xp"><i id="hud-xp"></i><span id="hud-xp-text">0 / 60 XP</span></div>
+          <div class="bar mana"><i id="hud-mana"></i><span id="hud-mana-text">100 / 100</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="hud-tr">
+      <div class="minimap-wrap panel">
+        <canvas id="minimap" width="200" height="200"></canvas>
+        <div class="clock"><span id="hud-daynight">☀</span> <span id="hud-clock">08:00</span></div>
+      </div>
+    </div>
+
+    <div id="buffs"></div>
+    <div id="room-chip" class="hidden"><span class="eyebrow">Inside your tower</span><b id="room-name"></b><small id="room-guide-hint"><kbd>I</kbd> Room guide</small></div>
+    <div id="quest" class="panel">
+      <div class="quest-head">Current Goal</div>
+      <div id="quest-title" class="quest-title"></div>
+      <ul id="quest-list"></ul>
+      <div class="quest-more"><kbd>J</kbd> Quest log — every chapter and tower</div>
+    </div>
+
+    <div id="toasts"></div>
+
+    <div class="hud-bottom">
+      <div id="inventory"></div>
+      <div class="hud-row"><div id="attune" aria-label="Attunement"></div><div id="spellbar"></div></div>
+    </div>
+
+    <div id="crosshair"></div>
+    <div id="prompt" class="hidden">
+      <svg class="ring" viewBox="0 0 44 44"><circle cx="22" cy="22" r="19" class="bg" /><circle cx="22" cy="22" r="19" class="fg" id="prompt-ring" /></svg>
+      <div class="prompt-text"><kbd>E</kbd> <span id="prompt-label"></span></div>
+    </div>
+    <div id="waypoint" class="hidden"><div class="wp-diamond"></div><span id="wp-dist"></span></div>
+    <div id="banner" class="hidden"></div>
+    <div id="lockhint" class="hidden">Click to take control</div>
+    <div id="controls-hint"><kbd>H</kbd> Controls</div>
+    <div id="target-info" class="hidden">
+      <div class="ti-name">Shadow Wisp <span class="ti-lock"></span></div>
+      <div class="ti-wards"></div>
+      <div class="ti-pips"></div>
+      <div class="ti-dist"></div>
+    </div>
+    <div id="threats"></div>
+    <div id="reward" class="hidden"></div>
+    <div id="bossbar" class="hidden"><div class="bb-name" id="bossbar-name"></div><div class="bb-track"><i id="bossbar-fill"></i></div><div class="bb-phase" id="bossbar-phase"></div></div>
+  </div>
+
+<div id="tour-skip" class="hidden"><kbd>E</kbd> or click to skip the tour</div>
+
+  <!-- Dialogue -->
+  <div id="dialogue" class="hidden">
+    <div class="dlg-name" id="dlg-name">Quill</div>
+    <div class="dlg-text" id="dlg-text"></div>
+    <div class="dlg-next">Press <kbd>E</kbd> or click to continue</div>
+  </div>
+
+  <!-- Build panel -->
+  <div id="build" class="modal hidden">
+    <div class="modal-card wide">
+      <div class="eyebrow" id="build-eyebrow">Builder's Altar</div>
+      <h2 id="build-title">Tower Plans</h2>
+      <div id="build-floors"></div>
+      <div class="modal-actions"><button class="btn" id="build-close">Close <kbd>Esc</kbd></button></div>
+    </div>
+  </div>
+
+  <!-- Puzzle -->
+  <div id="puzzle" class="modal"></div>
+
+  <!-- Tower room station panel -->
+  <div id="room-panel" class="modal hidden">
+    <div class="modal-card wide">
+      <div class="eyebrow" id="rp-eyebrow"></div>
+      <h2 id="rp-title"></h2>
+      <div id="rp-body"></div>
+      <div class="modal-actions"><button class="btn" id="rp-close">Close <kbd>Esc</kbd></button></div>
+    </div>
+  </div>
+
+  <!-- Bestiary journal (B) -->
+  <div id="journal" class="modal hidden" role="dialog" aria-labelledby="journal-title">
+    <div class="modal-card xwide journal-card">
+      <div class="eyebrow">Master Aldric's bestiary · annotated by his apprentice</div>
+      <h2 id="journal-title">The Bestiary</h2>
+      <div class="jb-grid"><nav id="journal-tabs" class="jb-roster"></nav><div id="journal-page" class="jb-page"></div></div>
+      <div class="modal-actions"><button class="btn" id="journal-close">Close <kbd>B</kbd></button></div>
+    </div>
+  </div>
+
+  <!-- Quest log (J) -->
+  <div id="questlog" class="modal hidden" role="dialog" aria-labelledby="questlog-title">
+    <div class="modal-card xwide questlog-card">
+      <div class="atl-head"><div><div class="eyebrow">The Fraying Veil · what's done and what's next</div><h2 id="questlog-title">Quest Log</h2></div>
+        <button class="btn" id="questlog-close">Close <kbd>J</kbd></button></div>
+      <div id="questlog-body"></div>
+    </div>
+  </div>
+
+  <!-- World atlas (M) -->
+  <div id="atlas" class="modal hidden" role="dialog" aria-labelledby="atlas-title">
+    <div class="modal-card xwide atlas-card">
+      <div class="atl-head"><div><div class="eyebrow">World atlas · <span id="atlas-seals"></span></div><h2 id="atlas-title">The Veiled Lands</h2></div>
+        <button class="btn" id="atlas-close">Close <kbd>M</kbd></button></div>
+      <div class="atl-wrap"><div id="atlas-body"></div><aside id="atlas-foot" class="atl-side"></aside></div>
+    </div>
+  </div>
+
+  <!-- Schools of Magic (K) -->
+  <div id="schools" class="modal hidden" role="dialog" aria-labelledby="schools-title">
+    <div class="modal-card xwide schools-card">
+      <div class="atl-head"><div><div class="eyebrow">Your path to Magician<span class="sc-keys"> · <kbd>←</kbd> <kbd>→</kbd> to browse</span></div><h2 id="schools-title">Schools of Magic</h2></div>
+        <button class="btn" id="schools-close">Close <kbd>K</kbd></button></div>
+      <div id="schools-body"></div>
+    </div>
+  </div>
+
+  <!-- Settings -->
+  <div id="settings" class="modal hidden" role="dialog" aria-labelledby="settings-title">
+    <div class="modal-card">
+      <div class="eyebrow">Options</div>
+      <h2 id="settings-title">Settings</h2>
+      <div id="settings-body"></div>
+      <div class="modal-actions"><button class="btn primary" id="settings-close">Done</button></div>
+    </div>
+  </div>
+
+  <!-- Controls legend (toggle with H) -->
+  <div id="legend" class="hidden" role="dialog" aria-labelledby="legend-title">
+    <div class="legend-card">
+      <div class="legend-head">
+        <div>
+          <div class="eyebrow">Apprentice's Handbook</div>
+          <h2 id="legend-title">Controls</h2>
+        </div>
+        <button class="btn sm" id="legend-close" aria-label="Close controls">✕</button>
+      </div>
+      <div id="legend-body"></div>
+      <p class="legend-foot">Press <kbd>H</kbd> any time to show or hide this.</p>
+    </div>
+  </div>
+
+  <!-- Pause -->
+  <div id="pause" class="modal hidden">
+    <div class="modal-card pause-card">
+      <div class="eyebrow">Paused</div>
+      <h2>Grimoire</h2>
+      <div class="pause-cols">
+      <div><div id="pause-stats" class="stats"></div><div id="pause-satchel"></div></div>
+      <div class="pause-buttons">
+        <button class="btn primary" id="btn-resume">Resume</button>
+        <button class="btn" id="btn-mute">Sound: On</button>
+        <button class="btn" id="btn-schools">Schools of Magic <kbd>K</kbd></button>
+        <button class="btn" id="btn-settings">Settings</button>
+        <button class="btn" id="btn-controls">Controls <kbd>H</kbd></button>
+        <button class="btn" id="btn-save">Save Game</button>
+        <button class="btn ghost" id="btn-quit">Save & Quit to Title</button>
+      </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ending -->
+  <div id="ending" class="screen">
+    <div class="title-inner">
+      <div class="eyebrow">Ascension</div>
+      <h1>You are a <span>Magician</span></h1>
+      <p class="tagline" id="ending-text"></p>
+      <div id="ending-stats" class="stats"></div>
+      <div class="title-buttons"><button class="btn primary" id="btn-freeplay">Continue exploring</button></div>
+    </div>
+  </div>
+
+  <div id="fade"></div>
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
