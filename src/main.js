@@ -239,7 +239,7 @@ class Game {
     $('btn-mute').onclick = () => {
       this.muted = !this.muted;
       this.audio.setMuted(this.muted);
-      $('btn-mute').textContent = `Sound: ${this.muted ? 'Off' : 'On'}`;
+      $('btn-mute').querySelector('em').textContent = this.muted ? 'Off' : 'On';
     };
     $('btn-freeplay').onclick = () => {
       $('ending').classList.remove('show');

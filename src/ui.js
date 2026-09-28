@@ -908,16 +908,19 @@ export class UI {
 
   renderPause() {
     const s = this.state;
+    // The headline: who you are and how far along. The small counts sit on one quiet line.
     this.el.pauseStats.innerHTML = `
-      <div>Level ${s.level}<b>${s.rank}</b></div>
-      <div>Time played<b>${formatTime(s.playTime)}</b></div>
-      <div>Tower floors<b>${s.floors} / ${TOWER_FLOORS.length}</b></div>
-      <div>Shrines attuned<b>${s.shrines.length} / ${SHRINES.length}</b></div>
-      <p class="pause-minor">${s.stats.gathered} gathered · ${s.stats.wisps} banished · ${s.stats.spells} spells cast</p>`;
-    // The whole satchel (the HUD bar only shows what's held or needed next).
+      <div class="ps-rank"><span class="ps-lvl">${s.level}</span><div><b>${s.rank}</b><small>${formatTime(s.playTime)} played</small></div></div>
+      <dl class="ps-figs">
+        <div><dt>Tower floors</dt><dd>${s.floors}<small>/${TOWER_FLOORS.length}</small></dd></div>
+        <div><dt>Shrines</dt><dd>${s.shrines.length}<small>/${SHRINES.length}</small></dd></div>
+        <div><dt>Banished</dt><dd>${s.stats.wisps}</dd></div>
+      </dl>
+      <p class="pause-minor">${s.stats.gathered} gathered · ${s.stats.spells} spells cast</p>`;
     const held = Object.entries(RESOURCES).filter(([k]) => s.inv[k] > 0);
-    $('pause-satchel').innerHTML = `<div class="eyebrow">Satchel</div>${held.length
-      ? held.map(([k, r]) => `<span class="sat" style="--c:${r.color}"><i></i>${s.inv[k]} ${r.name}</span>`).join('')
-      : '<small>Empty — charm a tree or shape a boulder.</small>'}`;
+    $('pause-satchel').innerHTML = `<div class="eyebrow">Satchel</div><div class="ps-sat">${held.length
+      ? held.map(([k, r]) => `<span class="sat" style="--c:${r.color}"><i></i><b>${s.inv[k]}</b> ${r.name}</span>`).join('')
+      : '<small>Empty — charm a tree or shape a boulder.</small>'}</div>`;
   }
+
 }

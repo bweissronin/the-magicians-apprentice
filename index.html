@@ -6,7 +6,7 @@
   <title>The Magician's Apprentice</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Alegreya+Sans:wght@400;500;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Alegreya:ital,wght@0,500;0,600;0,700;1,500&family=Alegreya+Sans:wght@400;500;700&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="puzzles-deep.css" />
   <script type="importmap">
@@ -38,16 +38,7 @@
         <button class="btn primary" id="btn-new">Begin Apprenticeship</button>
         <button class="btn" id="btn-title-settings">Settings</button>
       </div>
-      <div class="controls-grid">
-        <div><kbd>W</kbd><kbd>S</kbd> Walk forward / back</div>
-        <div><kbd>A</kbd><kbd>D</kbd> or <kbd>Mouse</kbd> Turn</div>
-        <div><kbd>Shift</kbd> Sprint</div>
-        <div><kbd>Space</kbd> Jump</div>
-        <div><kbd>E</kbd> Interact / hold to harvest</div>
-        <div><kbd>Click</kbd> Arcane Bolt · <kbd>Tab</kbd> Target</div>
-        <div><kbd>Q</kbd> Blink · <kbd>F</kbd> Nova</div>
-        <div><kbd>B</kbd> Tower plans · <kbd>K</kbd> Schools</div>
-      </div>
+      <p class="title-keys"><span><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> walk</span><span><kbd>E</kbd> interact</span><span><kbd>Click</kbd> cast</span><span><kbd>H</kbd> every control</span></p>
     </div>
   </div>
 
@@ -214,20 +205,21 @@
   <!-- Pause -->
   <div id="pause" class="modal hidden">
     <div class="modal-card pause-card">
-      <div class="eyebrow">Paused</div>
-      <h2>Grimoire</h2>
-      <div class="pause-cols">
-      <div><div id="pause-stats" class="stats"></div><div id="pause-satchel"></div></div>
-      <div class="pause-buttons">
+      <div class="pause-hero">
+        <div class="eyebrow">Paused</div>
+        <h2>Grimoire</h2>
+        <div id="pause-stats"></div>
+        <div id="pause-satchel"></div>
+      </div>
+      <nav class="pause-menu">
         <button class="btn primary" id="btn-resume">Resume</button>
-        <button class="btn" id="btn-mute">Sound: On</button>
-        <button class="btn" id="btn-schools">Schools of Magic <kbd>K</kbd></button>
-        <button class="btn" id="btn-settings">Settings</button>
-        <button class="btn" id="btn-controls">Controls <kbd>H</kbd></button>
-        <button class="btn" id="btn-save">Save Game</button>
-        <button class="btn ghost" id="btn-quit">Save & Quit to Title</button>
-      </div>
-      </div>
+        <button class="pm" id="btn-schools"><i>✦</i><span>Schools of Magic</span><kbd>K</kbd></button>
+        <button class="pm" id="btn-controls"><i>❖</i><span>Controls</span><kbd>H</kbd></button>
+        <button class="pm" id="btn-settings"><i>⚙</i><span>Settings</span></button>
+        <button class="pm" id="btn-mute"><i>♪</i><span>Sound</span><em>On</em></button>
+        <button class="pm" id="btn-save"><i>✎</i><span>Save game</span></button>
+        <button class="pm quiet" id="btn-quit"><i>⏻</i><span>Save &amp; quit to title</span></button>
+      </nav>
     </div>
   </div>
 

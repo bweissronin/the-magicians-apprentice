@@ -106,8 +106,11 @@ export class QuestLog {
           <div class="qx-bar"><i style="width:${(done / goals.length) * 100}%"></i></div>
           <ul class="qx-goals">${goals.map(goalRow).join('')}</ul></div>`;
       }
-      return `<div class="qx-ch later"><span class="qx-num">${c.n}</span><span><small>${chapterLabel(c.n)}</small><b>???</b></span><em>Opens after ${chapterLabel(c.n - 1)}</em></div>`;
-    }).join('');
+      // Only the very next chapter gets a row; the rest of the road folds into one line.
+      if (c.n === n + 1) return `<div class="qx-ch later"><span class="qx-num">${c.n}</span><span><small>${chapterLabel(c.n)}</small><b>???</b></span><em>Opens after ${chapterLabel(c.n - 1)}</em></div>`;
+      return '';
+    }).join('') + (CHAPTERS.length > n + 1
+      ? `<div class="qx-road">${CHAPTERS.slice(n + 1).map((c) => `<i>${c.n}</i>`).join('')}<span>${CHAPTERS.length - n - 1} more chapter${CHAPTERS.length - n - 1 > 1 ? 's' : ''}, still veiled</span></div>` : '');
     // A compact line per tower, linking to the Towers tab.
     const strip = towers.map((t) => `<button class="qx-strip ${t.open ? '' : 'dim'}" data-tower="${t.id}" style="--c:${t.color}">
       <span class="qx-glyph">${t.open ? t.glyph : '🔒'}</span><span><b>${t.name}</b><i class="qx-mini"><i style="width:${(t.built / t.steps.length) * 100}%"></i></i></span>
