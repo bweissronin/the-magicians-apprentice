@@ -223,6 +223,9 @@ class Game {
     this.magic.onFirstSight = (w) => this.firstSight(w);
     this.magic.onLearn = (w, el, verdict) => this.journal.learned(w.kind, el, verdict);
     this.magic.onAddFx = (o) => this.aoHidden.push(o);
+    this.aoHidden.push(this.magic.fx.root); // bolt glows and impacts stay out of the AO pass
+    this.magic.fx.camera = this.camera;
+    this.magic.fx.onShake = (v) => { this.player.shake = Math.max(this.player.shake, v); }; // (off if the player turned shake off)
   }
 
   wireDom() {

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { heightAt, WORLD_RADIUS, WATER_LEVEL } from './world.js';
 import { makeCreature, setFlash } from './creatures.js';
 import { CREATURES, RANK, EL, resolveHit, elementVerdict, elderChance } from './bestiary.js';
+import { BoltFX } from './boltfx.js';
 
 const WISP_COLOR = new THREE.Color('#c04dff');
 const TMP = new THREE.Vector3();
@@ -36,6 +37,8 @@ export class Magic {
     this.rockGeo = new THREE.DodecahedronGeometry(1, 0);
     this.boltMats = Object.fromEntries(Object.keys(BOLTS).map((k) => [k, new THREE.MeshBasicMaterial({ color: EL[k].core })]));
     this.rockMat = new THREE.MeshStandardMaterial({ color: '#9a7a58', roughness: 0.8, emissive: '#dca468', emissiveIntensity: 0.25, flatShading: true });
+    this.fx = new BoltFX(); // every element's projectile, trail and impact (boltfx.js)
+    this.fx.setScene(scene);
     this.spawnTimer = 4;
     this.strict = false;  // "Scholar" setting: resisted elements do nothing
     this.poolLights(scene);
@@ -85,6 +88,7 @@ export class Magic {
     this.wisps.length = 0; this.bolts.length = 0; this.pools.length = 0; this.lavaPools.length = 0; this.pillars.length = 0;
     this.scene.remove(this.reticle);
     this.scene = scene; this.particles = particles;
+    this.fx.setScene(scene);
     this.poolLights(scene); // made while the gate's fade is still up, not mid-fight
     this.arena = arena || this.valleyArena; this.theme = theme || this.valleyTheme;
     this.scene.add(this.reticle);
@@ -237,11 +241,10 @@ export class Magic {
       const ahead = !target && ['frost', 'fire', 'radiance'].includes(el) ? from.clone().addScaledVector(fwd, 14).setY(this.surfaceAt(from.x + fwd.x * 14, from.z + fwd.z * 14)) : null;
       vel = (target ? this.aimPoint(target).sub(from).normalize() : ahead ? ahead.sub(from).normalize() : fwd.clone().setY(0.02).normalize()).multiplyScalar(B.speed);
     }
-    const mesh = new THREE.Mesh(B.arc ? this.rockGeo : this.boltGeo, B.arc ? this.rockMat : this.boltMats[el]);
-    mesh.scale.setScalar(B.size);
+    const fx = this.fx.bolt(el, B.size), mesh = fx.group;
     mesh.position.copy(from);
-    this.scene.add(mesh);
-    this.bolts.push({ mesh, vel, life: B.arc ? 2.4 : 1.6, target: B.homing ? target : null, dmg: B.dmg * (rank >= 2 ? 2 : 1), el, homing: B.homing, speed: B.speed, arc: B.arc });
+    this.fx.muzzle(el, from);
+    this.bolts.push({ mesh, fx, vel, life: B.arc ? 2.4 : 1.6, target: B.homing ? target : null, dmg: B.dmg * (rank >= 2 ? 2 : 1), el, homing: B.homing, speed: B.speed, arc: B.arc });
     player.castT = 0.25;
     this.audio.play(el === 'earth' ? 'quarry' : el === 'frost' ? 'attune' : 'bolt');
     this.state.stats.spells++;
@@ -540,6 +543,7 @@ export class Magic {
     this.night = night;
     for (const k in this.cooldowns) this.cooldowns[k] = Math.max(0, this.cooldowns[k] - dt);
     this.updateBolts(dt);
+    this.fx.update(dt);
     this.updatePools(dt, elapsed, player);
     // Creatures: more (and bolder) at night. None during pause/cutscenes.
     if (!paused) {
@@ -562,8 +566,9 @@ export class Magic {
         const want = this.aimPoint(b.target).sub(b.mesh.position).normalize().multiplyScalar(b.speed);
         b.vel.lerp(want, 1 - Math.exp(-dt * b.homing));
       }
-      if (b.arc) { b.vel.y -= 20 * dt; b.mesh.rotation.x += dt * 8; b.mesh.rotation.z += dt * 5; }
+      if (b.arc) { b.vel.y -= 20 * dt; if (!b.fx) { b.mesh.rotation.x += dt * 8; b.mesh.rotation.z += dt * 5; } }
       b.mesh.position.addScaledVector(b.vel, dt);
+      if (b.fx) this.fx.updateBolt(b.fx, dt, b.vel);
       const p = b.mesh.position;
       const col = this.boltCol?.[b.el] || (this.boltCol ||= Object.fromEntries(Object.keys(BOLTS).map((k) => [k, new THREE.Color(EL[k].color)])))[b.el];
       this.particles.spawn(p.x, p.y, p.z, (Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 0.8, (Math.random() - 0.5) * 0.8, col, b.arc ? 0.4 : 0.55, 0.35, b.arc ? 3 : 0, 2);
@@ -582,7 +587,7 @@ export class Magic {
       if (b.fire && (hit || ground || b.life <= 0)) this.explode(p, b.radius, b.dmg);
       if (hit || ground || b.life <= 0) {
         this.impact(b, p, !!hit || ground);
-        this.scene.remove(b.mesh);
+        if (b.fx) this.fx.release(b.fx); else this.scene.remove(b.mesh);
         this.bolts.splice(i, 1);
       }
     }
@@ -591,6 +596,8 @@ export class Magic {
   // Where a bolt lands: Radiance pools, Earth's splash and smothering.
   impact(b, p, landed) {
     this.particles.burst(p, { count: 24, color: EL[b.el].color, speed: 5, size: 0.4, life: 0.5 });
+    if (landed) this.fx.impact(b.el, p.clone(), Math.max(this.arena.height(p.x, p.z), this.surfaceAt(p.x, p.z)), this.particles);
+    else if (b.fx) this.fx.fizzle(b.el, p.clone(), this.particles);
     if (landed) this.audio.play('impact');
     if (!landed) return;
     this.onImpact?.(b.el, p);

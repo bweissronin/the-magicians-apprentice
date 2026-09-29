@@ -64,7 +64,7 @@ Chapter changes are announced, and **J** opens the quest log: the chapter's goal
 
 **Mana is your life.** Creatures don't wound you; they drain mana. A hit that lands while your well is already empty makes you **falter**. You wake at the courtyard, or at the realm's sanctum door, having dropped a fifth of your common materials. Sigils and creature drops are never lost, and any haunt or guardian fight is called off. The mana bar pulses red when you're low and something is hunting you. Dodge [C] costs nothing and gives a moment of immunity.
 
-One bolt, five attunements. Every creature wards against some elements and is weak to others: **weak** is double damage and a stagger, **resisted** is a quarter (or nothing with *Scholar wards* on in Settings), and a few pairings combine:
+One bolt, five attunements, each with its own spellwork (`src/boltfx.js`): a violet orb in a turning rune ring, a rayed sun that strikes shafts of light, a glowing boulder that throws rubble, a spread of ice shards that raises spikes, and a flickering fireball that bursts in a swelling blast. Every bolt flashes at the staff, drags a tapered ribbon trail and lands with a shockwave, all additive glow over a saturated body so it reads in daylight, with no extra lights. Every creature wards against some elements and is weak to others: **weak** is double damage and a stagger, **resisted** is a quarter (or nothing with *Scholar wards* on in Settings), and a few pairings combine:
 - Frost ×3 **freezes** a foe, and Arcane or Earth then **shatters** it.
 - **Radiance** leaves a pool of light: spirits inside it turn solid, and golems' crystal eyes are dazzled, opening their chests to Arcane.
 - **Earth** is a lobbed stone. It breaks armour of any kind, knocks foes down and smothers lava pools.
@@ -178,6 +178,7 @@ Progress autosaves to `localStorage` every 30 s and after every milestone. Older
 | `src/resources.js` | Harvestable nodes (trees, rocks, crystals, blooms) |
 | `src/tower.js` | Procedural tower floors, build animation, altar, hologram preview |
 | `src/shrines.js` / `src/puzzles.js` | Shrine world objects / puzzle UIs |
+| `src/boltfx.js` | The staff bolts' look: per-element projectiles, ribbon trails, cast flashes, impacts (shockwaves, light shafts, rubble, ice spikes, fireballs) and fizzles, under one AO-hidden root |
 | `src/magic.js` | The attuned bolt, spells, Earthen Stair, light/lava pools, and every creature: spawning, ranks, wards, freezing, armour, movement |
 | `src/bestiary.js` | Elements, creature definitions, ranks, the damage rules (`resolveHit`), and "needed for" recipe lookup |
 | `src/journal.js` | The bestiary journal (B): each creature's live 3D model on a pedestal at the centre, a portrait roster, and cards for weaknesses, drops and study |
