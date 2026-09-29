@@ -292,7 +292,166 @@ function buildMouth(id, color, rnd, { flat = false, ground, hill = false } = {})
       col(x, z, 0.4);
     }
   }
+  dressMouth(id, root, rnd, { col, glows, flames, flat });
   return { root, open, locked, flames, glows, cols, domes };
+}
+
+// ------------------------------------------------------------------ dressing
+// The approach to each mouth, in local space (the road runs along -z to the mouth at z = 0; it
+// stays clear for |x| < 2.4). Pieces are merged per material, and the big ones are solid.
+function dressMouth(id, root, rnd, { col, glows, flames, flat }) {
+  const parts = new Map();
+  const put = (mat, geo) => { if (!parts.has(mat)) parts.set(mat, []); parts.get(mat).push(geo.index ? geo.toNonIndexed() : geo); };
+  const R = (lo, hi) => lo + rnd() * (hi - lo);
+  const side = () => (rnd() < 0.5 ? -1 : 1);
+  if (id === 'geomancy') {
+    const wood = clay('#7a5230', { roughness: 0.85, key: 'mineWoodDark' }), plank = clay('#a07448', { roughness: 0.8, key: 'minePlank' });
+    const iron = clay('#55504f', { roughness: 0.5, key: 'mineIron' }), sack = clay('#b89a6a', { roughness: 0.95, key: 'oreSack' }), stone = clay('#7a6452', { roughness: 0.9, key: 'spoil' });
+    const gold = glow('#ffc24a', 1.2); glows.push({ mat: gold, k: 1.2 });
+    const lamp = glow('#ffc46a', 2.2); glows.push({ mat: lamp, k: 2.2 });
+    // The sign over the mouth: a board with crossed pickaxes.
+    put(plank, new RoundedBoxGeometry(3.4, 0.9, 0.16, 2, 0.05).translate(0, ARCH_H + 0.95, -0.55));
+    for (const s of [-1, 1]) {
+      put(wood, new THREE.BoxGeometry(0.1, 1.5, 0.08).rotateZ(s * 0.75).translate(0, ARCH_H + 0.95, -0.66));
+      put(iron, new THREE.ConeGeometry(0.1, 0.62, 4).rotateZ(Math.PI / 2 + s * 0.75).translate(s * -0.45, ARCH_H + 1.45, -0.68));
+    }
+    // Barrels and crates by the left jamb; ore sacks glinting with gold on the right.
+    for (const [x, z, h] of [[-3.6, -2.2, 0], [-4.5, -3.1, 0], [-3.9, -3.4, 1.05]]) {
+      put(wood, new THREE.CylinderGeometry(0.46, 0.4, 1.05, 12).translate(x, h + 0.525, z));
+      for (const y of [0.18, 0.87]) put(iron, new THREE.TorusGeometry(0.45, 0.035, 5, 16).rotateX(Math.PI / 2).translate(x, h + y, z));
+    }
+    col(-4, -2.9, 1.2);
+    for (const [x, z, y, s] of [[-5.2, -1.4, 0, 1], [-5.4, -2.5, 0, 0.9], [-5.3, -1.9, 0.95, 0.8]]) put(plank, new RoundedBoxGeometry(s, s, s, 2, 0.05).rotateY(rnd() * 0.4).translate(x, y + s / 2, z));
+    for (let k = 0; k < 5; k++) { const x = R(3.4, 4.8), z = R(-4.2, -1.8); put(sack, new THREE.SphereGeometry(0.42, 10, 8).scale(1, 0.8, 0.9).translate(x, 0.32, z)); put(gold, new THREE.OctahedronGeometry(0.12, 0).translate(x + R(-0.2, 0.2), 0.68, z + R(-0.2, 0.2))); }
+    col(4.1, -3, 1.2);
+    // A pickaxe and a shovel against the right jamb.
+    put(wood, new THREE.CylinderGeometry(0.045, 0.045, 1.5, 6).rotateZ(-0.35).translate(TUNNEL_HALF + 0.95, 0.72, -0.9));
+    put(iron, new THREE.BoxGeometry(0.8, 0.1, 0.1).rotateZ(-0.35 + Math.PI / 2 * 0.1).translate(TUNNEL_HALF + 0.72, 1.42, -0.9));
+    put(wood, new THREE.CylinderGeometry(0.04, 0.04, 1.4, 6).rotateZ(0.25).translate(TUNNEL_HALF + 1.5, 0.7, -1.1));
+    put(iron, new RoundedBoxGeometry(0.34, 0.42, 0.05, 1, 0.02).translate(TUNNEL_HALF + 1.65, 0.18, -1.1));
+    // A loading platform on stilts to the left, with a ladder.
+    const px = -6.4, pz = -5.5, ph = 2.2;
+    put(plank, new THREE.BoxGeometry(2.8, 0.16, 2.4).translate(px, ph, pz));
+    for (const [dx, dz] of [[-1.25, -1.05], [1.25, -1.05], [-1.25, 1.05], [1.25, 1.05]]) put(wood, new THREE.BoxGeometry(0.2, ph, 0.2).translate(px + dx, ph / 2, pz + dz));
+    for (const dx of [-1.3, 1.3]) put(wood, new THREE.BoxGeometry(0.08, 0.08, 2.4).translate(px + dx, ph + 0.7, pz));
+    for (const dz of [-1.1, 1.1]) put(wood, new THREE.BoxGeometry(2.7, 0.08, 0.08).translate(px, ph + 0.7, pz + dz));
+    for (const s of [-1, 1]) put(wood, new THREE.BoxGeometry(0.07, 2.6, 0.07).rotateX(-0.28).translate(px + 1.6 + s * 0.24, 1.1, pz - 1.2 - 0.36));
+    for (let k = 0; k < 6; k++) put(wood, new THREE.BoxGeometry(0.5, 0.05, 0.05).translate(px + 1.6, 0.25 + k * 0.38, pz - 1.2 - 0.62 + k * 0.105));
+    col(px, pz, 1.6);
+    // A spoil heap beside the rails, a buffer stop at their end, and a lantern post by the road.
+    for (let k = 0; k < 14; k++) put(stone, new THREE.DodecahedronGeometry(R(0.25, 0.6), 0).translate(R(2.6, 4.8), R(0.1, 0.5), R(-9.5, -6.5)));
+    col(3.7, -8, 1.3);
+    put(wood, new THREE.BoxGeometry(1.8, 0.35, 0.3).translate(0, 0.45, -12.1)); for (const s of [-0.7, 0.7]) put(wood, new THREE.BoxGeometry(0.2, 0.6, 0.2).translate(s, 0.3, -12));
+    const lx = -2.9, lz = -10;
+    put(wood, new THREE.BoxGeometry(0.18, 3, 0.18).translate(lx, 1.5, lz)); put(wood, new THREE.BoxGeometry(0.9, 0.12, 0.12).translate(lx + 0.4, 2.95, lz));
+    put(iron, new THREE.CylinderGeometry(0.02, 0.02, 0.4, 4).translate(lx + 0.75, 2.7, lz)); put(lamp, new RoundedBoxGeometry(0.28, 0.38, 0.28, 2, 0.05).translate(lx + 0.75, 2.4, lz));
+    col(lx, lz, 0.35);
+  } else if (id === 'pyromancy') {
+    const obs = new THREE.MeshStandardMaterial({ color: '#1a1420', roughness: 0.18, metalness: 0.35, flatShading: true });
+    const basalt = clay('#2e2826', { roughness: 0.7, key: 'cinderBasalt' }), crust = clay('#241c1a', { roughness: 0.6, key: 'lavaCrust' });
+    const cloth = clay('#6a1c14', { roughness: 0.9, side: THREE.DoubleSide, key: 'charBanner' }), bone = clay('#d8ccb0', { roughness: 0.75, key: 'cinderBone' }), iron = clay('#4a403c', { roughness: 0.5, key: 'cinderIron' });
+    const rune = glow('#ff8a2a', 2.4); glows.push({ mat: rune, k: 2.4 });
+    const lava = glow('#ff6a1c', 2.2); glows.push({ mat: lava, k: 2.2 });
+    // Obsidian obelisks either side of the approach, banded with glowing runes.
+    for (const s of [-1, 1]) for (const z of [-6, -11]) {
+      const x = s * 4.1, h = 4.2 + rnd() * 1.2;
+      put(obs, new THREE.CylinderGeometry(0.42, 0.62, h, 4).rotateY(Math.PI / 4).translate(x, h / 2, z));
+      put(obs, new THREE.ConeGeometry(0.44, 0.9, 4).rotateY(Math.PI / 4).translate(x, h + 0.45, z));
+      for (const y of [h * 0.35, h * 0.62]) put(rune, new THREE.CylinderGeometry(0.5, 0.52, 0.12, 4).rotateY(Math.PI / 4).translate(x, y, z));
+      col(x, z, 0.6);
+    }
+    // A fall of lava down the cliff to the left of the mouth, into a pool.
+    const fx = -(TUNNEL_HALF + 2.2), fz = -1.1; // against the jamb, in view from the road
+    put(lava, new THREE.CylinderGeometry(0.35, 0.7, 7.2, 8, 1, true).translate(fx, 3.6, fz));
+    put(lava, new THREE.CircleGeometry(1.5, 20).rotateX(-Math.PI / 2).translate(fx - 0.3, 0.06, fz - 1.3));
+    for (let k = 0; k < 8; k++) { const a = (k / 8) * Math.PI * 2; put(basalt, new THREE.DodecahedronGeometry(0.4, 0).translate(fx - 0.3 + Math.cos(a) * 1.6, 0.15, fz - 1.3 + Math.sin(a) * 1.6)); }
+    col(fx - 0.3, fz - 1.3, 1.8);
+    // Cooled flows across the ground, cracked with heat, and small vents glowing.
+    for (const [x, z, w, d, a] of [[-4.5, -4, 3.2, 1.6, 0.4], [5.2, -8.5, 3.6, 1.8, -0.3], [4.6, -3, 2.2, 1.2, 0.9]]) {
+      put(crust, new THREE.CylinderGeometry(1, 1, 0.14, 9).scale(w / 2, 1, d / 2).rotateY(a).translate(x, -0.03, z)); // nearly flush: a skin of rock, not a step
+      for (let k = 0; k < 3; k++) put(lava, new THREE.BoxGeometry(w * 0.6, 0.03, 0.05).rotateY(a + (k - 1) * 0.5).translate(x, 0.045, z));
+    }
+    for (const [x, z] of [[-5.8, -8.2], [6.2, -5.6], [5.6, -12]]) { put(basalt, new THREE.ConeGeometry(0.7, 0.55, 8, 1, true).translate(x, 0.27, z)); put(lava, new THREE.CircleGeometry(0.32, 10).rotateX(-Math.PI / 2).translate(x, 0.5, z)); }
+    // Obsidian shards breaking out of the ground.
+    for (let k = 0; k < 9; k++) { const s = side(), x = s * R(4.2, 7), z = R(-13, -2), h = R(0.8, 2.2); put(obs, new THREE.ConeGeometry(R(0.2, 0.4), h, 5).rotateZ(s * R(0.1, 0.5)).translate(x, h / 2 - 0.1, z)); }
+    // Charred banners on iron poles, and a horned skull above the mouth.
+    for (const s of [-1, 1]) {
+      const x = s * 2.9, z = -2.6;
+      put(iron, new THREE.CylinderGeometry(0.06, 0.07, 4.2, 6).translate(x, 2.1, z)); put(iron, new THREE.BoxGeometry(1.1, 0.07, 0.07).translate(x - s * 0.5, 4.1, z));
+      const bn = new THREE.PlaneGeometry(0.9, 2.2, 1, 4), bp = bn.attributes.position; for (let i = 0; i < bp.count; i++) { const y = bp.getY(i); bp.setX(i, bp.getX(i) + Math.sin(y * 2.5) * 0.08); if (y < -0.9) bp.setX(i, bp.getX(i) * (Math.abs(bp.getX(i)) > 0.2 ? 1 : 0.4)); }
+      put(cloth, bn.translate(x - s * 0.5, 2.95, z));
+      col(x, z, 0.25);
+    }
+    put(bone, new THREE.SphereGeometry(0.55, 12, 9).scale(1, 0.85, 0.9).translate(0, ARCH_H + 1.1, -0.72));
+    put(crust, new THREE.BoxGeometry(0.5, 0.18, 0.1).translate(0, ARCH_H + 0.8, -1.16));
+    for (const s of [-1, 1]) { put(bone, taperTube([new THREE.Vector3(s * 0.4, ARCH_H + 1.25, -0.7), new THREE.Vector3(s * 1.0, ARCH_H + 1.5, -0.8), new THREE.Vector3(s * 1.2, ARCH_H + 1.05, -1.0)], 0.16, 0.03, 10, 6)); put(rune, new THREE.SphereGeometry(0.09, 6, 5).translate(s * 0.2, ARCH_H + 1.12, -1.18)); }
+  } else if (id === 'cryomancy') {
+    const pine = clay('#2f5a4c', { roughness: 0.85, key: 'frostPine' }), bark = clay('#4a3a30', { roughness: 0.9, key: 'frostBark' }), snow = clay('#f6fbff', { roughness: 0.6, key: 'glacierSnow' });
+    const wood = clay('#8a6a4a', { roughness: 0.85, key: 'sledWood' }), rope = clay('#c8b890', { roughness: 0.95, key: 'frostRope' }), cloth = clay('#3a6aa0', { roughness: 0.9, side: THREE.DoubleSide, key: 'frostBanner' });
+    const ice = new THREE.MeshStandardMaterial({ color: '#9fdcff', emissive: '#3aa6ff', emissiveIntensity: 0.55, roughness: 0.08, transparent: true, opacity: 0.88, flatShading: true });
+    glows.push({ mat: ice, k: 0.55 });
+    const crystal = glow('#8fe8ff', 1.4); glows.push({ mat: crystal, k: 1.4 });
+    // Snowy pines either side of the approach.
+    for (const [x, z, s] of [[-5.6, -4, 1.1], [-7.2, -8.5, 1.35], [-5.2, -12, 0.95], [6, -5.5, 1.25], [7.4, -10.5, 1.1], [5.4, -13.5, 0.9], [-8.4, -1.8, 0.9], [8.6, -2.6, 1]]) {
+      put(bark, new THREE.CylinderGeometry(0.14 * s, 0.2 * s, 1 * s, 6).translate(x, 0.5 * s, z));
+      [[1.3, 1.9, 1.5], [1.0, 1.6, 2.5], [0.7, 1.3, 3.4]].forEach(([r, h, y]) => { put(pine, new THREE.ConeGeometry(r * s, h * s, 8).translate(x, y * s, z)); put(snow, new THREE.ConeGeometry(r * s * 0.72, h * s * 0.42, 8).translate(x, (y + h * 0.33) * s, z)); });
+      col(x, z, 0.8 * s);
+    }
+    // A frozen waterfall down the cliff to the right of the mouth, and its spill of ice.
+    for (let k = 0; k < 5; k++) put(ice, new THREE.CylinderGeometry(R(0.22, 0.4), R(0.35, 0.6), 7, 7).translate(TUNNEL_HALF + 1.7 + k * 0.34 + R(-0.08, 0.08), 3.5, -1 + R(-0.15, 0.15)));
+    for (let k = 0; k < 6; k++) put(ice, new THREE.DodecahedronGeometry(R(0.4, 0.7), 0).scale(1.3, 0.6, 1).translate(R(TUNNEL_HALF + 1.4, TUNNEL_HALF + 3.6), 0.2, R(-2.2, -0.9)));
+    col(TUNNEL_HALF + 2.4, -1.6, 1.3);
+    // Glowing ice crystals, a sled with a lashed load, snow-capped crates and a banner.
+    for (let k = 0; k < 6; k++) { const s = side(), x = s * R(3.4, 5), z = R(-12, -2); for (let j = 0; j < 3; j++) put(crystal, new THREE.OctahedronGeometry(R(0.18, 0.32), 0).scale(0.6, 2.2, 0.6).rotateZ(R(-0.4, 0.4)).translate(x + R(-0.3, 0.3), 0.4, z + R(-0.3, 0.3))); }
+    const sx = 3.6, sz = -6.2;
+    for (const d of [-0.42, 0.42]) put(wood, taperTube([new THREE.Vector3(sx + d, 0.08, sz - 1.1), new THREE.Vector3(sx + d, 0.08, sz + 0.9), new THREE.Vector3(sx + d, 0.35, sz + 1.25)], 0.05, 0.05, 8, 5));
+    put(wood, new THREE.BoxGeometry(1.05, 0.08, 2).translate(sx, 0.3, sz - 0.1));
+    put(rope, new RoundedBoxGeometry(0.8, 0.5, 1.2, 2, 0.12).translate(sx, 0.6, sz - 0.2));
+    col(sx, sz, 1.1);
+    for (const [x, z] of [[-3.8, -2.4], [-4.4, -3.3]]) { put(wood, new RoundedBoxGeometry(0.9, 0.9, 0.9, 2, 0.05).translate(x, 0.45, z)); put(snow, new RoundedBoxGeometry(0.95, 0.18, 0.95, 2, 0.08).translate(x, 0.95, z)); }
+    col(-4.1, -2.9, 1);
+    put(wood, new THREE.CylinderGeometry(0.06, 0.07, 3.6, 6).translate(-2.9, 1.8, -1.6)); put(cloth, new THREE.PlaneGeometry(0.8, 1.6).translate(-2.9 + 0.42, 2.7, -1.6));
+    put(ice, new THREE.OctahedronGeometry(0.22, 0).translate(-2.9 + 0.42, 2.9, -1.63));
+    // A rope railing along the approach.
+    for (const s of [-1, 1]) {
+      const pts = []; for (let z = -13; z <= -2; z += 2.2) { const x = s * 2.7; put(wood, new THREE.CylinderGeometry(0.06, 0.07, 1.1, 6).translate(x, 0.55, z)); put(snow, new THREE.SphereGeometry(0.09, 6, 5).translate(x, 1.12, z)); pts.push(new THREE.Vector3(x, 0.95, z)); col(x, z, 0.12); }
+      for (let i = 0; i < pts.length - 1; i++) put(rope, taperTube([pts[i], pts[i].clone().lerp(pts[i + 1], 0.5).setY(0.78), pts[i + 1]], 0.025, 0.025, 8, 4));
+    }
+    // Icicles hanging from the lintel ledges.
+    for (let k = 0; k < 16; k++) { const h = R(0.4, 1.2), x = R(-5.5, 5.5); if (Math.abs(x) < TUNNEL_HALF + 0.3) continue; put(ice, new THREE.ConeGeometry(R(0.06, 0.14), h, 5).rotateX(Math.PI).translate(x, ARCH_H + 0.3 - h / 2, -0.35)); }
+  } else {
+    const stone = clay('#8f8c98', { roughness: 0.75, key: 'barrowStone' }), moss = clay('#4a6a3a', { roughness: 0.95, side: THREE.DoubleSide, key: 'barrowMoss' });
+    const bark = clay('#3a302c', { roughness: 0.9, key: 'barrowBark' }), bone = clay('#d8d0bc', { roughness: 0.75, key: 'barrowBone' }), iron = clay('#2c2a30', { roughness: 0.45, key: 'barrowIron' }), wax = clay('#e8e0c8', { roughness: 0.8, key: 'barrowWax' });
+    const rune = glow('#7dffb0', 1.8); glows.push({ mat: rune, k: 1.8 });
+    const flame = glow('#b8ffcf', 2.6); glows.push({ mat: flame, k: 2.6 });
+    // Standing stones lining the approach, some leaning, cut with glowing runes.
+    for (const [x, z, h, lean] of [[-4, -3.5, 3.4, 0.05], [4.2, -4, 3, -0.12], [-4.6, -8, 2.6, 0.18], [4.8, -8.6, 3.2, 0.02], [-5.2, -12.6, 2.2, -0.2], [5.4, -13, 2.8, 0.1]]) {
+      put(stone, crag(0.95, h, 0.55, rnd).rotateZ(lean).translate(x, 0, z));
+      for (let k = 0; k < 3; k++) { const y = h * 0.62 - 0.3 * k; put(rune, new THREE.BoxGeometry(k === 1 ? 0.3 : 0.07, k === 1 ? 0.07 : 0.24, 0.04).rotateZ(lean).translate(x - Math.sin(lean) * y, y, z - 0.29)); } // carved in the face toward the road
+      col(x, z, 0.55);
+    }
+    // Twisted dead trees with a lantern hanging from a branch.
+    for (const [x, z, s] of [[-7.6, -5.5, 1.1], [7.8, -9.5, 1]]) {
+      put(bark, taperTube([new THREE.Vector3(x, 0, z), new THREE.Vector3(x + 0.3 * s, 2 * s, z + 0.2), new THREE.Vector3(x - 0.2 * s, 3.8 * s, z - 0.1)], 0.32 * s, 0.1 * s, 12, 6));
+      for (const [bx, by, bz] of [[1.6, 3.6, 0.3], [-1.4, 3.2, -0.4], [0.6, 4.6, -0.8], [-0.8, 4.3, 0.9]]) put(bark, taperTube([new THREE.Vector3(x, by * s * 0.72, z), new THREE.Vector3(x + bx * 0.55 * s, by * s * 0.9, z + bz * 0.5), new THREE.Vector3(x + bx * s, by * s, z + bz)], 0.11 * s, 0.025, 8, 5));
+      put(iron, new THREE.CylinderGeometry(0.015, 0.015, 0.6, 4).translate(x + 1.45 * s, 3.25 * s, z + 0.28)); put(flame, new RoundedBoxGeometry(0.22, 0.3, 0.22, 2, 0.04).translate(x + 1.45 * s, 2.85 * s, z + 0.28));
+      col(x, z, 0.45);
+    }
+    // Cairns, candle clusters and bones by the gate.
+    for (const [x, z] of [[-3.2, -6], [3.3, -11.2]]) { let y = 0; for (let k = 0; k < 4; k++) { const r = 0.5 - k * 0.1; put(stone, new THREE.DodecahedronGeometry(r, 0).scale(1, 0.6, 1).translate(x + R(-0.06, 0.06), y + r * 0.55, z)); y += r * 1.05; } col(x, z, 0.5); }
+    for (const [x, z] of [[-TUNNEL_HALF - 0.6, -0.9], [TUNNEL_HALF + 0.6, -0.9], [-2.9, -2.2], [2.9, -2.4]]) for (let k = 0; k < 4; k++) {
+      const h = R(0.18, 0.45), cx = x + R(-0.25, 0.25), cz = z + R(-0.2, 0.2);
+      put(wax, new THREE.CylinderGeometry(0.05, 0.055, h, 6).translate(cx, h / 2, cz)); put(flame, new THREE.ConeGeometry(0.035, 0.12, 5).translate(cx, h + 0.07, cz));
+    }
+    for (let k = 0; k < 5; k++) put(bone, new THREE.CylinderGeometry(0.035, 0.03, R(0.35, 0.6), 5).rotateZ(Math.PI / 2).rotateY(rnd() * 3).translate(side() * R(2.8, 4), 0.04, R(-5, -1.5)));
+    // Moss hanging from the lintel, and a skull keystone set in it.
+    for (let k = 0; k < 10; k++) { const x = R(-TUNNEL_HALF - 1, TUNNEL_HALF + 1), h = R(0.5, 1.4); put(moss, new THREE.PlaneGeometry(R(0.25, 0.5), h).translate(x, ARCH_H + 0.48 - h / 2, -0.84)); }
+    put(bone, new THREE.SphereGeometry(0.34, 12, 9).scale(1, 1.05, 0.85).translate(0, ARCH_H + 0.9, -0.86));
+    put(bone, new THREE.BoxGeometry(0.34, 0.16, 0.2).translate(0, ARCH_H + 0.6, -0.92));
+    for (const s of [-1, 1]) put(rune, new THREE.SphereGeometry(0.07, 6, 5).translate(s * 0.12, ARCH_H + 0.93, -1.14));
+  }
+  for (const [mat, geos] of parts) root.add(mesh(merge(...geos), mat, !(mat.emissiveIntensity > 1)));
+  void flames; void flat;
 }
 
 // ------------------------------------------------------------------ the horizon
@@ -300,42 +459,193 @@ function buildMouth(id, color, rnd, { flat = false, ground, hill = false } = {})
 // out, so these do their own: aerial perspective that is thick at the foot (so they rise out of
 // the misted ridge in front) and thins toward the summit, in the sky's colour of the moment.
 const HAZE = { uFog: { value: new THREE.Color('#cfe6f5') } };
-function hazeMaterial(color, { foot = 0.85, top = 0.18, y0 = 10, y1 = 120, lit = true } = {}) {
+function hazeMaterial(color, { foot = 0.85, top = 0.18, y0 = 10, y1 = 120, lit = true, vcol = false } = {}) {
   return new THREE.ShaderMaterial({
-    fog: false,
+    fog: false, vertexColors: vcol,
     uniforms: { uFog: HAZE.uFog, uCol: { value: new THREE.Color(color) }, uFoot: { value: foot }, uTop: { value: top }, uY: { value: new THREE.Vector2(y0, y1) }, uLit: { value: lit ? 1 : 0 } },
     vertexShader: `
-      varying vec3 vW;
-      void main() { vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }`,
-    fragmentShader: `
-      uniform vec3 uFog, uCol; uniform float uFoot, uTop, uLit; uniform vec2 uY; varying vec3 vW;
+      varying vec3 vW; varying vec3 vC;
       void main() {
-        vec3 n = normalize(cross(dFdx(vW), dFdy(vW)));
-        float l = mix(1.0, 0.5 + 0.55 * max(dot(n, normalize(vec3(0.45, 0.8, -0.35))), 0.0), uLit);
+        vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz;
+        #ifdef USE_COLOR
+          vC = color;
+        #else
+          vC = vec3(1.0);
+        #endif
+        gl_Position = projectionMatrix * viewMatrix * w;
+      }`,
+    fragmentShader: `
+      uniform vec3 uFog, uCol; uniform float uFoot, uTop, uLit; uniform vec2 uY; varying vec3 vW; varying vec3 vC;
+      void main() {
+        vec3 cr = cross(dFdx(vW), dFdy(vW));
+        vec3 n = dot(cr, cr) > 1e-12 ? normalize(cr) : vec3(0.0, 1.0, 0.0); // (a zero normal would be NaN: black)
+        float l = mix(1.0, 0.42 + 0.7 * max(dot(n, normalize(vec3(0.45, 0.8, -0.35))), 0.0), uLit);
         float haze = mix(uFoot, uTop, smoothstep(uY.x, uY.y, vW.y));
-        gl_FragColor = vec4(mix(uCol * l, uFog, haze), 1.0);
+        gl_FragColor = vec4(mix(uCol * vC * l, uFog, haze), 1.0);
       }`,
   });
+}
+
+// A soft radial glow (the crater's light on its own smoke).
+let SOOT = null;
+function sootGlow() {
+  if (SOOT) return SOOT;
+  const cv = document.createElement('canvas'); cv.width = cv.height = 128; const x = cv.getContext('2d');
+  const gr = x.createRadialGradient(64, 64, 0, 64, 64, 64); gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.35, 'rgba(255,255,255,0.45)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = gr; x.fillRect(0, 0, 128, 128);
+  SOOT = new THREE.CanvasTexture(cv); SOOT.colorSpace = THREE.SRGBColorSpace; return SOOT;
+}
+
+// A tube whose radius tapers from r0 to r1 along a path (lava streams).
+function taperTube(pts, r0, r1, seg = 48, radial = 6) {
+  const curve = new THREE.CatmullRomCurve3(pts), geo = new THREE.TubeGeometry(curve, seg, 1, radial, false);
+  const pos = geo.attributes.position, c = new THREE.Vector3(), v = new THREE.Vector3();
+  for (let i = 0; i <= seg; i++) {
+    curve.getPointAt(i / seg, c); const r = r0 + (r1 - r0) * (i / seg);
+    for (let j = 0; j <= radial; j++) { const k = i * (radial + 1) + j; v.fromBufferAttribute(pos, k).sub(c).multiplyScalar(r).add(c); pos.setXYZ(k, v.x, v.y, v.z); }
+  }
+  return geo;
+}
+
+// The volcano's smoke: a billowing column rising straight out of the crater, lit orange from the
+// lava beneath, leaning a little downwind as it climbs, and hazed like the mountain. Plus embers.
+function plumeMaterial(additive) {
+  return new THREE.ShaderMaterial({
+    transparent: true, depthWrite: false, fog: false, blending: additive ? THREE.AdditiveBlending : THREE.NormalBlending,
+    uniforms: { uTime: { value: 0 }, uFog: HAZE.uFog, uRise: { value: additive ? 0.09 : 0.012 }, uH: { value: additive ? 90 : 300 } },
+    vertexShader: `
+      attribute vec4 aSeed; attribute vec3 aTint; uniform float uTime, uRise, uH;
+      varying vec2 vUv; varying float vA; varying vec3 vCol; varying float vT;
+      void main() {
+        vUv = uv;
+        float t = fract(uTime * uRise * (0.8 + aSeed.w * 0.4) + aSeed.x);
+        vec3 c = vec3(aSeed.y * (6.0 + t * 55.0) + t * t * 110.0, t * uH, aSeed.z * (6.0 + t * 45.0));
+        c.x += sin(uTime * 0.3 + aSeed.x * 20.0) * t * 12.0;
+        float size = ${additive ? '(1.6 + aSeed.w * 2.0) * (1.0 - t)' : '(16.0 + t * 110.0) * (0.7 + aSeed.w * 0.6)'};
+        vA = smoothstep(0.0, ${additive ? '0.05' : '0.04'}, t) * pow(1.0 - t, ${additive ? '0.8' : '1.3'});
+        vT = t; vCol = aTint;
+        vec4 mv = modelViewMatrix * vec4(c, 1.0);
+        mv.xy += position.xy * size;
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: `
+      uniform vec3 uFog; varying vec2 vUv; varying float vA; varying vec3 vCol; varying float vT;
+      void main() {
+        float r = length(vUv - 0.5) * 2.0;
+        float a = smoothstep(1.0, ${additive ? '0.0' : '0.25'}, r) * vA;
+        if (a < 0.004) discard;
+        ${additive
+          ? 'gl_FragColor = vec4(vCol * 1.6, a);'
+          : 'vec3 base = mix(vec3(1.0, 0.45, 0.15), vCol, smoothstep(0.0, 0.16, vT)); gl_FragColor = vec4(mix(base, uFog, 0.18 + vT * 0.35), a * 0.92);'}
+      }`,
+  });
+}
+function plumeMesh(n, additive, rnd) {
+  const geo = new THREE.InstancedBufferGeometry().copy(new THREE.PlaneGeometry(1, 1));
+  geo.instanceCount = n;
+  const seed = new Float32Array(n * 4), tint = new Float32Array(n * 3), c = new THREE.Color();
+  for (let i = 0; i < n; i++) {
+    seed.set([i / n + rnd() * 0.02, rnd() * 2 - 1, rnd() * 2 - 1, rnd()], i * 4);
+    (additive ? c.set(rnd() < 0.5 ? '#ffb347' : '#ff6a1c') : c.set('#3e3836').offsetHSL(0, 0, (rnd() - 0.5) * 0.08)).toArray(tint, i * 3);
+  }
+  geo.setAttribute('aSeed', new THREE.InstancedBufferAttribute(seed, 4));
+  geo.setAttribute('aTint', new THREE.InstancedBufferAttribute(tint, 3));
+  const m = new THREE.Mesh(geo, plumeMaterial(additive));
+  m.frustumCulled = false; m.renderOrder = additive ? 6 : 5;
+  return m;
 }
 
 function horizonPiece(id, rnd, hazed) {
   const g = new THREE.Group();
   const land = (color, o) => hazeMaterial(color, o);
   const light = (color) => hazeMaterial(color, { foot: 0.6, top: 0.05, lit: false });
-  let plume = null;
+  let plume = null, tick = null;
   if (id === 'pyromancy') {
-    // A great volcano: a crater that glows, lava running down its flanks, a plume of smoke.
-    const prof = [[0, 150], [18, 158], [25, 171], [33, 167], [60, 122], [100, 64], [148, 16], [190, -12]];
-    g.add(new THREE.Mesh(new THREE.LatheGeometry(prof.map(([r, y]) => new THREE.Vector2(r, y)), 40), land('#4a3833')));
-    const lava = light('#ff6a1c');
-    g.add(new THREE.Mesh(new THREE.TorusGeometry(26, 2.6, 8, 40).rotateX(Math.PI / 2).translate(0, 168, 0), lava));
-    const radiusAt = (y) => { for (let i = 1; i < prof.length; i++) { const [r1, y1] = prof[i - 1], [r2, y2] = prof[i]; if (y <= y1 && y >= y2) return r1 + (r2 - r1) * (y1 - y) / (y1 - y2); } return 190; };
-    for (let k = 0; k < 5; k++) {
-      const a0 = -Math.PI / 2 + (k - 2) * 0.32 + (rnd() - 0.5) * 0.1, pts = [];
-      for (let y = 164; y > 40 + rnd() * 50; y -= 8) { const a = a0 + Math.sin(y * 0.05 + k) * 0.05, r = radiusAt(y) + 1.2; pts.push(new THREE.Vector3(Math.cos(a) * r, y, Math.sin(a) * r)); }
-      g.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 24, 1.6 + rnd(), 5), lava));
+    // A great volcano. Its flanks are cut by gullies and ridges and banded ash-grey to rust; the
+    // crater rim is ragged and breached on the side facing the valley, and lava pours out of the
+    // breach and the rim, running down the gullies and pooling at the foot. A smaller vent smokes
+    // on one shoulder, dark foothills stand in front, and a column of smoke billows from the crater.
+    const N = 128, RINGS = 46, RIM = 30, BASE = 205, RIMY = 176, LAKE = 154;
+    const front = -Math.PI / 2, breach = front + 0.32;
+    const gully = (a, r) => { const t = THREE.MathUtils.clamp((r - RIM) / (BASE - RIM), 0, 1); const ridges = Math.abs(Math.sin(a * 13 + r * 0.035 + Math.sin(a * 3.1) * 1.4)) ** 0.55; return -(1 - ridges) * 11 * Math.sin(Math.PI * Math.min(1, t * 1.15)); };
+    const notch = (a) => { const d = Math.atan2(Math.sin(a - breach), Math.cos(a - breach)); return -Math.max(0, 1 - Math.abs(d) / 0.28) * 13; };
+    const H = (a, r) => {
+      if (r < RIM - 12) return LAKE - 4;
+      const rimNoise = Math.sin(a * 9) * 2.2 + Math.sin(a * 23 + 1) * 1.3 + notch(a);
+      if (r < RIM) { const k = (r - (RIM - 12)) / 12; return LAKE - 4 + (RIMY + rimNoise - (LAKE - 4)) * k * k; }
+      const t = (r - RIM) / (BASE - RIM);
+      return -12 + (RIMY + rimNoise * (1 - t) + 12) * (1 - t) ** 1.55 + gully(a, r) + Math.sin(a * 5 + r * 0.05) * 2.4 * t;
+    };
+    const rad = (i) => { const k = i / RINGS; return k < 0.28 ? (RIM - 12) + (k / 0.28) * 14 : RIM + 2 + ((k - 0.28) / 0.72) ** 1.2 * (BASE - RIM - 2); };
+    const pos = [], col = [], cA = new THREE.Color('#6a605c'), cB = new THREE.Color('#9a6a52'), cC = new THREE.Color('#7a5e50'), cash = new THREE.Color('#b8b0aa'), c = new THREE.Color();
+    const vtx = (i, j) => { const a = (j / N) * Math.PI * 2, r = rad(i); return [Math.cos(a) * r, H(a, r), Math.sin(a) * r]; };
+    const shade = (x, y, z) => {
+      const band = Math.sin(y * 0.19 + Math.sin(Math.atan2(z, x) * 7) * 0.8) > 0.35 ? 0.82 : 1;
+      c.copy(y > 140 ? cA : y > 70 ? cB : cC); if (y > 150) c.lerp(cash, 0.35);
+      // Ridge crests catch the light; gully floors are sooty.
+      const r = Math.hypot(x, z), g2 = r > RIM ? gully(Math.atan2(z, x), r) / -11 : 0; c.lerp(g2 > 0.55 ? cC : cash, g2 > 0.55 ? 0.35 : (1 - g2) * 0.22);
+      return c.clone().multiplyScalar(band * (0.9 + (Math.sin(x * 0.7 + z * 0.3) * 0.5 + 0.5) * 0.18)).convertLinearToSRGB(); // the haze shader writes colour as-is
+    };
+    for (let i = 0; i < RINGS; i++) for (let j = 0; j < N; j++) {
+      const q = [vtx(i, j), vtx(i + 1, j), vtx(i + 1, j + 1), vtx(i, j + 1)];
+      for (const tri of [[0, 2, 1], [0, 3, 2]]) { // outward-facing
+        const cy = (q[tri[0]][1] + q[tri[1]][1] + q[tri[2]][1]) / 3, cx = (q[tri[0]][0] + q[tri[1]][0] + q[tri[2]][0]) / 3, cz = (q[tri[0]][2] + q[tri[1]][2] + q[tri[2]][2]) / 3;
+        const fc = shade(cx, cy, cz);
+        for (const k of tri) { pos.push(...q[k]); col.push(fc.r, fc.g, fc.b); }
+      }
     }
-    plume = { at: new THREE.Vector3(0, 172, 0), n: 64, col: new THREE.Color('#4d4644') };
+    const cone = new THREE.BufferGeometry();
+    cone.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+    cone.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+    g.add(new THREE.Mesh(cone, land('#ffffff', { vcol: true, foot: 0.72, top: 0.1, y0: 0, y1: 150 })));
+    // The crater: a lake of lava, glowing up the inside of the rim.
+    const lava = light('#ff6a1c'), hot = light('#ffd27a');
+    g.add(new THREE.Mesh(new THREE.CircleGeometry(RIM - 11, 40).rotateX(-Math.PI / 2).translate(0, LAKE - 2.5, 0), lava));
+    g.add(new THREE.Mesh(new THREE.CircleGeometry(RIM - 20, 32).rotateX(-Math.PI / 2).translate(3, LAKE - 2.3, -2), hot));
+    const craterGlow = new THREE.Sprite(new THREE.SpriteMaterial({ color: '#ff7a2a', map: sootGlow(), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, opacity: 0.8 }));
+    craterGlow.position.set(0, RIMY + 6, 0); craterGlow.scale.set(120, 70, 1); g.add(craterGlow);
+    // Lava streams: out of the breach and over the rim, down the gullies, widening as they go.
+    const streams = [[breach, 0.95, 2.4, 5], [breach + 0.14, 0.62, 1.4, 2.6], [front - 0.42, 0.5, 1.2, 2.2], [front + 0.95, 0.42, 1.1, 2], [front - 0.9, 0.36, 1, 1.8], [front + 0.66, 0.7, 1.5, 3]];
+    const pools = [], lavaGeos = [], hotGeos = [];
+    for (const [a0, reach, w0, w1] of streams) {
+      const pts = []; let a = a0;
+      const rEnd = RIM + (BASE - RIM) * reach * (0.85 + rnd() * 0.1);
+      for (let r = RIM - 2; r <= rEnd; r += 6) {
+        a += Math.sin(r * 0.07 + a0 * 7) * 0.02;
+        // Settle into the nearest gully floor.
+        let best = a, bh = Infinity; for (let da = -0.05; da <= 0.05; da += 0.0125) { const h = H(a + da, r); if (h < bh) { bh = h; best = a + da; } }
+        a = a * 0.6 + best * 0.4;
+        const surf = Math.max(H(a - 0.02, r), H(a, r), H(a + 0.02, r)); // ride on the gully floor, just proud of it
+        pts.push(new THREE.Vector3(Math.cos(a) * r, (H(a, r) * 0.7 + surf * 0.3) + 0.4, Math.sin(a) * r));
+      }
+      lavaGeos.push(taperTube(pts, w0, w1, pts.length * 3));
+      hotGeos.push(taperTube(pts.slice(0, Math.ceil(pts.length * 0.45)), w0 * 0.55, w0 * 0.4, pts.length * 2).translate(0, w0 * 0.35, 0));
+      pools.push(pts[pts.length - 1]);
+    }
+    for (const p of pools) lavaGeos.push(new THREE.CircleGeometry(9 + rnd() * 6, 18).scale(1.4, 1, 1).rotateX(-Math.PI / 2).translate(p.x, p.y - 0.4, p.z));
+    g.add(new THREE.Mesh(merge(...lavaGeos), lava), new THREE.Mesh(merge(...hotGeos), hot));
+    // A smaller cone on the shoulder, its own vent glowing.
+    { const a = front + 1.18, r = 118, bx = Math.cos(a) * r, bz = Math.sin(a) * r, by = H(a, r) - 6;
+      const sub = new THREE.ConeGeometry(34, 44, 18, 4, true).toNonIndexed(), sp = sub.attributes.position;
+      for (let i = 0; i < sp.count; i++) { const x = sp.getX(i), y = sp.getY(i), z = sp.getZ(i); const k = (y + 22) / 44, rr = Math.hypot(x, z); if (rr > 0.01) { const f = 1 + Math.sin(Math.atan2(z, x) * 9) * 0.07 * (1 - k); sp.setXYZ(i, x * f, y, z * f); } if (k > 0.97) sp.setY(i, y - 4); }
+      sub.translate(bx, by + 22, bz);
+      const sc = new Float32Array(sp.count * 3); for (let i = 0; i < sp.count; i++) { const y = sp.getY(i); c.copy(y > by + 34 ? cA : cB).convertLinearToSRGB().toArray(sc, i * 3); }
+      sub.setAttribute('color', new THREE.BufferAttribute(sc, 3));
+      g.add(new THREE.Mesh(sub, land('#ffffff', { vcol: true, foot: 0.72, top: 0.1, y0: 0, y1: 150 })));
+      g.add(new THREE.Mesh(new THREE.CircleGeometry(7, 16).rotateX(-Math.PI / 2).translate(bx, by + 40.5, bz), lava));
+      const vg = new THREE.Sprite(craterGlow.material.clone()); vg.material.opacity = 0.6; vg.position.set(bx, by + 44, bz); vg.scale.set(40, 24, 1); g.add(vg);
+    }
+    // Dark, jagged foothills in front, so the mountain rises from a range rather than a plain.
+    const hills = [];
+    for (let k = 0; k < 16; k++) {
+      const a = front + (k / 15 - 0.5) * 2.3 + (rnd() - 0.5) * 0.08, r = BASE - 14 + rnd() * 26, h = 22 + rnd() * 34, w = 22 + rnd() * 18;
+      hills.push(new THREE.ConeGeometry(w, h, 5 + Math.floor(rnd() * 3), 1).rotateY(rnd() * 3).translate(Math.cos(a) * r, h / 2 - 16, Math.sin(a) * r));
+    }
+    g.add(new THREE.Mesh(merge(...hills), land('#2e2826', { foot: 0.82, top: 0.3, y0: -10, y1: 40 })));
+    // Smoke and embers, both animated in the shader (update() drives uTime).
+    const smoke = plumeMesh(90, false, rnd), embers = plumeMesh(160, true, rnd);
+    for (const m of [smoke, embers]) { m.position.set(0, RIMY - 6, 0); g.add(m); }
+    tick = (t) => { smoke.material.uniforms.uTime.value = t; embers.material.uniforms.uTime.value = t; const f = 0.72 + Math.sin(t * 1.7) * 0.08 + Math.sin(t * 5.3) * 0.04; craterGlow.material.opacity = f; };
   } else if (id === 'cryomancy') {
     // Snow peaks, the glacier's source.
     for (const [x, r, h] of [[-70, 70, 150], [15, 88, 182], [100, 62, 128]]) {
@@ -364,7 +674,7 @@ function horizonPiece(id, rnd, hazed) {
     for (let k = 0; k < 7; k++) g.add(new THREE.Mesh(new THREE.BoxGeometry(3, 8, 1).translate(-24 + k * 8, 50 + (k % 2) * 4, -12.6), win));
     g.add(new THREE.Mesh(new THREE.CircleGeometry(4.5, 16).rotateY(Math.PI).translate(0, 64, -12.7), win));
   }
-  return { group: g, plume };
+  return { group: g, plume, tick };
 }
 
 export class Crossings {
@@ -400,6 +710,7 @@ export class Crossings {
       hz.group.position.set(far.x, -8, far.z); hz.group.rotation.y = facing;
       hz.group.traverse((o) => { o.frustumCulled = false; });
       this.group.add(hz.group);
+      if (hz.tick) (this.horizonTicks ||= []).push(hz.tick);
       if (hz.plume) {
         const p = hz.plume.at.clone().applyEuler(hz.group.rotation).add(hz.group.position), r2 = mulberry32(5);
         for (let i = 0; i < hz.plume.n; i++) {
@@ -539,6 +850,7 @@ export class Crossings {
     for (const f of [...this.flames, ...(exit?.flames || [])]) { f.scale.y = 1 + Math.sin(t * 11 + f.id) * 0.12 + Math.sin(t * 17.3 + f.id * 2) * 0.08; f.scale.x = f.scale.z = 1 - (f.scale.y - 1) * 0.5; }
     for (const q of [...this.glows, ...(exit?.glows || [])]) q.mat.emissiveIntensity = q.k * (0.85 + Math.sin(t * 1.7 + q.k) * 0.15);
     if (this.smoke) this.smoke.material.uniforms.uTime.value = t;
+    for (const f of this.horizonTicks || []) f(t);
     // The far realms take the sky's colour through the day (they ignore the fog, so haze them here).
     if (g.scene.fog) HAZE.uFog.value.copy(g.scene.fog.color);
     // Weather and motes in the realms' edges of the valley, round the apprentice.
