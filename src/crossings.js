@@ -91,30 +91,73 @@ function tunnel(mouth, deep, flat, rock) {
   return g;
 }
 
-// The rock the way is cut into: jambs, a lintel, shoulders, and a roof running back over the
-// tunnel (in the valley the mountain stands behind it; in a realm it is a hill of its own).
-function rockFace(mat, rnd, { snow = null, hill = false } = {}) {
+// The rock the way is cut into: a cliff of angular, flat-shaded crags. Jambs of stacked blocks
+// frame the mouth under a heavy lintel slab, and stepped rows of tall slabs rise behind and beside
+// it, each row set back and higher, banded with strata. A craggy roof runs back over the tunnel
+// (in the valley the mountain stands behind it; in a realm it is a hill of its own).
+function crag(w, h, d, rnd) {
+  const g = new THREE.BoxGeometry(w, h, d, 2, 3, 2), p = g.attributes.position;
+  for (let i = 0; i < p.count; i++) {
+    const y = p.getY(i), top = y > -h / 2 + 0.01, k = (y + h / 2) / h; // keep the base flat on the ground
+    const taper = 1 - k * 0.14;
+    p.setXYZ(i, p.getX(i) * taper + (top ? (rnd() - 0.5) * w * 0.22 : 0), y + (top && k > 0.99 ? (rnd() - 0.5) * h * 0.1 : top ? (rnd() - 0.5) * h * 0.06 : 0), p.getZ(i) * taper + (top ? (rnd() - 0.5) * d * 0.22 : 0));
+  }
+  const out = g.toNonIndexed(); out.computeVertexNormals();
+  return out;
+}
+function rockFace(mat, rnd, { snow = null, hill = false, ground = () => 0 } = {}) {
   const geos = [], caps = [];
-  const boulder = (x, y, z, r, sx = 1, sy = 1, sz = 1) => {
-    geos.push(new THREE.DodecahedronGeometry(r, 1).scale(sx, sy, sz).rotateY(rnd() * 6).translate(x, y, z));
-    if (snow && y + r * sy > ARCH_H + 1) caps.push(new THREE.SphereGeometry(r * 0.8, 10, 6).scale(sx * 1.05, 0.32, sz * 1.05).translate(x, y + r * sy * 0.78, z));
+  const base = new THREE.Color(mat.color || '#8a7160');
+  const place = (x, y, z, w, h, d, ry = (rnd() - 0.5) * 0.35) => {
+    const g = crag(w, h, d, rnd).rotateY(ry).translate(x, y + h / 2, z);
+    // Strata: bands of lighter and darker rock by height, and a little variation per block.
+    const pos = g.attributes.position, col = new Float32Array(pos.count * 3), c = new THREE.Color(), shade = 0.9 + rnd() * 0.2;
+    for (let i = 0; i < pos.count; i++) { const band = Math.sin(pos.getY(i) * 1.7 + x * 0.1) > 0.35 ? 0.82 : 1; c.copy(base).multiplyScalar(shade * band).toArray(col, i * 3); }
+    g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+    geos.push(g);
+    if (snow && y + h > ARCH_H + 1) caps.push(new THREE.BoxGeometry(w * 0.98, 0.32, d * 0.98).rotateY(ry).translate(x, y + h + 0.1, z));
   };
-  for (const side of [-1, 1]) for (let k = 0; k < 4; k++) { const r = 1.6 + rnd() * 0.7; boulder(side * (TUNNEL_HALF + r * 0.92), 0.6 + k * 2.1, 1.1 + rnd() * 0.8, r); }
-  for (let k = -2; k <= 2; k++) boulder(k * 1.75, ARCH_H + 1.35 + rnd() * 0.4, 1.3 + rnd() * 0.6, 1.5 + rnd() * 0.35);
-  for (let k = 0; k < 12; k++) { const side = k % 2 ? 1 : -1; boulder(side * (5 + rnd() * 9), 1 + rnd() * 7, 2.5 + rnd() * 5, 2.2 + rnd() * 1.8); }
-  for (let z = 3; z < TUNNEL_LEN + 3; z += 2.6) {
-    const y = ARCH_H + 1.2 - (hill ? 0 : z * TUNNEL_DROP / TUNNEL_LEN);
-    boulder((rnd() - 0.5) * 1.5, y + rnd() * 0.6, z, 2.6 + rnd() * 0.8, 1.5, 0.8, 1.1);
-    if (hill) for (const side of [-1, 1]) boulder(side * (TUNNEL_HALF + 1.8 + rnd()), 1.2 + rnd(), z, 2.2 + rnd() * 0.6);
+  const J = TUNNEL_HALF;
+  // Jambs: stacked blocks either side of the mouth.
+  for (const side of [-1, 1]) {
+    let y = 0;
+    for (let k = 0; k < 3; k++) { const w = 1.7 + rnd() * 0.6, h = 1.6 + rnd() * 0.8; place(side * (J + w / 2 - 0.05), y, 1.1 + rnd() * 0.4, w, h, 2.2 + rnd() * 0.6, (rnd() - 0.5) * 0.12); y += h - 0.05; }
+  }
+  // The lintel: one heavy slab over the mouth, and a block or two on it.
+  place(0, ARCH_H - 0.05, 1.2, J * 2 + 2.8, 1.5, 2.6, (rnd() - 0.5) * 0.06);
+  place(-1.2 + rnd(), ARCH_H + 1.4, 2.2, 3.4, 2 + rnd(), 3, undefined);
+  place(1.6 + rnd(), ARCH_H + 1.4, 2.6, 3, 1.6 + rnd(), 3, undefined);
+  // The cliff: rows of tall slabs rooted in the ground, each row set back and standing taller, so
+  // it steps up like a real crag face (nothing floats against the mountain behind).
+  const rows = hill ? [[1.8, 3, 5.5]] : [[-1.2, 7, 11], [2.8, 5, 9], [6.4, 6, 11]]; // the first stands in front of the mountain's face
+  for (const [z0, hMin, hMax] of rows) {
+    for (const side of [-1, 1]) {
+      let x = J + 1.9 + rnd() * 0.6;
+      while (x < (hill ? 12 : 17)) {
+        const w = 2.4 + rnd() * 2.2;
+        const px = side * (x + w / 2), pz = z0 + rnd() * 1.6, gy = ground(px, pz);
+        place(px, gy - 1.6, pz, w, hMin + rnd() * (hMax - hMin) + Math.max(0, gy) * 0.5, 3 + rnd() * 1.5);
+        x += w * 0.8;
+      }
+    }
+  }
+  // Over the mouth, blocks rest on the tunnel's roof, climbing back to the cliff's height.
+  if (!hill) for (const [z, h] of [[4.5, 4], [7.5, 6.5], [10.5, 9]]) for (let x = -J - 0.8; x <= J + 0.8; x += 2.9) place(x + (rnd() - 0.5) * 0.6, ARCH_H + 0.9 - z * TUNNEL_DROP / TUNNEL_LEN, z + rnd(), 3.1, h * (0.8 + rnd() * 0.4), 3.2);
+  // A craggy roof running back over the tunnel.
+  for (let z = 3.5; z < TUNNEL_LEN + 3; z += 2.8) {
+    const y = ARCH_H + 0.8 - (hill ? 0 : z * TUNNEL_DROP / TUNNEL_LEN);
+    place((rnd() - 0.5) * 1.2, y, z, J * 2 + 3 + rnd(), 1.4 + rnd() * 1.2, 3.2);
+    if (hill) for (const side of [-1, 1]) place(side * (J + 1.6 + rnd() * 0.5), 0, z, 2.4, y + 0.8, 3.1);
   }
   const g = new THREE.Group();
-  g.add(mesh(merge(...geos), mat));
+  const rockMat = new THREE.MeshStandardMaterial({ color: '#ffffff', vertexColors: true, roughness: mat.roughness ?? 0.85, flatShading: true });
+  g.add(mesh(merge(...geos), rockMat));
   if (caps.length) g.add(mesh(merge(...caps), snow, false));
   return g;
 }
 
 // One realm's mouth: the rock, the inside, what's built at the entrance, and how it's barred.
-function buildMouth(id, color, rnd, { flat = false } = {}) {
+function buildMouth(id, color, rnd, { flat = false, ground } = {}) {
   const root = new THREE.Group(), open = new THREE.Group(), locked = new THREE.Group();
   const flames = [], glows = [], cols = [], domes = [];
   root.add(open, locked);
@@ -124,7 +167,7 @@ function buildMouth(id, color, rnd, { flat = false } = {}) {
     // The Old Mine: rock with crystal seams, a shored adit, rails down into the dark, a cart outside.
     const wood = clay('#8a5f38', { roughness: 0.85, key: 'mineWood' }), iron = clay('#55504f', { roughness: 0.5, key: 'mineIron' });
     const rust = clay('#7a4a30', { roughness: 0.7, key: 'mineRust' }), rock = clay('#8a7160', { roughness: 0.85, key: 'mineRock' });
-    root.add(rockFace(rock, rnd, { hill: flat }), tunnel('#3a2c22', '#000000', flat, rock));
+    root.add(rockFace(rock, rnd, { hill: flat, ground }), tunnel('#3a2c22', '#000000', flat, rock));
     for (const z of [0.3, 5, 10]) { // shoring frames, the first at the mouth
       const y = inside(0, z), f = new THREE.Group();
       for (const side of [-1, 1]) f.add(mesh(new RoundedBoxGeometry(0.42, ARCH_H, 0.42, 2, 0.06).translate(side * (TUNNEL_HALF - 0.25), ARCH_H / 2, 0), wood));
@@ -168,7 +211,7 @@ function buildMouth(id, color, rnd, { flat = false } = {}) {
     // running beside the road into the mountain. The far end of the cleft glows.
     const basalt = clay('#2e2826', { roughness: 0.7, key: 'cinderBasalt' }), rock = clay('#3c322e', { roughness: 0.8, key: 'cinderRock' });
     const iron = clay('#4a403c', { roughness: 0.5, key: 'cinderIron' });
-    root.add(rockFace(rock, rnd, { hill: flat }), tunnel('#2a1a16', '#ff5a1a', flat, rock));
+    root.add(rockFace(rock, rnd, { hill: flat, ground }), tunnel('#2a1a16', '#ff5a1a', flat, rock));
     const cols6 = [];
     for (const side of [-1, 1]) for (let k = 0; k < 5; k++) { const h = 4.5 + rnd() * 4.5; cols6.push(new THREE.CylinderGeometry(0.5, 0.56, h, 6).translate(side * (TUNNEL_HALF + 0.7 + (k % 3) * 0.95), h / 2, -0.8 + Math.floor(k / 3) * 0.9 + rnd() * 0.3)); }
     root.add(mesh(merge(...cols6), basalt));
@@ -198,7 +241,7 @@ function buildMouth(id, color, rnd, { flat = false } = {}) {
     const rock = clay('#8b97a6', { roughness: 0.8, key: 'glacierRock' }), snow = clay('#f6fbff', { roughness: 0.6, key: 'glacierSnow' });
     const ice = new THREE.MeshStandardMaterial({ color: '#bfeaff', emissive: '#5fbfff', emissiveIntensity: 0.3, roughness: 0.1, transparent: true, opacity: 0.85, flatShading: true });
     glows.push({ mat: ice, k: 0.3 });
-    root.add(rockFace(rock, rnd, { snow, hill: flat }), tunnel('#bfe4f2', '#3aa6ff', flat, snow));
+    root.add(rockFace(rock, rnd, { snow, hill: flat, ground }), tunnel('#bfe4f2', '#3aa6ff', flat, snow));
     const chunks = [];
     for (let k = 0; k <= 12; k++) { const t = (k / 12) * Math.PI, r = 0.62 + rnd() * 0.3; chunks.push(new THREE.OctahedronGeometry(r, 0).scale(1, 1.3, 0.8).rotateY(rnd() * 3).translate(-Math.cos(t) * (TUNNEL_HALF + 0.35), Math.sin(t) * (ARCH_H - 0.1) + 0.3, 0.1 + rnd() * 0.3)); }
     const drips = [];
@@ -219,7 +262,7 @@ function buildMouth(id, color, rnd, { flat = false } = {}) {
     // and steps going down into the dark.
     const earth = clay('#59624f', { roughness: 0.9, key: 'barrowEarth' }), stone = clay('#8f8c98', { roughness: 0.75, key: 'barrowStone' });
     const iron = clay('#2c2a30', { roughness: 0.45, key: 'barrowIron' });
-    root.add(rockFace(earth, rnd, { hill: flat }), tunnel('#2c342e', '#050806', flat, earth));
+    root.add(rockFace(earth, rnd, { hill: flat, ground }), tunnel('#2c342e', '#050806', flat, earth));
     for (const side of [-1, 1]) root.add(mesh(new RoundedBoxGeometry(1.0, ARCH_H + 0.6, 1.0, 2, 0.14).translate(side * (TUNNEL_HALF + 0.3), (ARCH_H + 0.6) / 2, -0.2), stone));
     root.add(mesh(new RoundedBoxGeometry(TUNNEL_HALF * 2 + 2.4, 0.85, 1.2, 2, 0.16).translate(0, ARCH_H + 0.9, -0.2), stone));
     const steps = new THREE.InstancedMesh(new THREE.BoxGeometry(TUNNEL_HALF * 2 - 0.3, 0.16, 0.9), stone, 10), m = new THREE.Matrix4();
@@ -336,7 +379,9 @@ export class Crossings {
     const puffs = [];
     SCHOOLS.forEach((def) => {
       const id = def.id, road = passRoadHeight(id), facing = this.facingOf(id), rnd = mulberry32(id.length * 131 + 7);
-      const m = buildMouth(id, def.color, rnd);
+      // The cliff's slabs root where the pass walls actually are (local x across, z along).
+      const ground = (lx, lz) => { const q = passPoint(id, PASS_LIP + lz, -lx); return heightAt(q.x, q.z) - road; };
+      const m = buildMouth(id, def.color, rnd, { ground });
       const at = passPoint(id, PASS_LIP);
       m.root.position.set(at.x, road, at.z); m.root.rotation.y = facing;
       this.group.add(m.root);
@@ -346,6 +391,7 @@ export class Crossings {
       const stat = m.cols.map((c) => ({ ...W(c.x, c.z), radius: c.radius }));
       for (let z = -1.5; z <= TUNNEL_LEN; z += 0.9) for (const side of [-1, 1]) stat.push({ ...W(side * (TUNNEL_HALF + 0.35), z), radius: 0.5 }); // the tunnel's walls
       for (let x = TUNNEL_HALF + 0.9; x < 22; x += 1.2) for (const side of [-1, 1]) stat.push({ ...W(side * x, 0.4), radius: 0.7 }); // the face: no climbing over the top
+      for (let x = TUNNEL_HALF + 2.6; x < 18; x += 1.4) for (const side of [-1, 1]) stat.push({ ...W(side * x, -2.2), radius: 1.35 }); // the cliff's front row
       const block = [];
       for (let x = -TUNNEL_HALF + 0.3; x <= TUNNEL_HALF - 0.3; x += 0.75) block.push({ ...W(x, -0.8), radius: 0.6 });
       // The realm on the horizon, far out past the ring.
