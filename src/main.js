@@ -887,7 +887,7 @@ class Game {
       realm.scene.add(this.player.mesh);
       this.player.setIndoor({ radius: realm.radius, heightAt: realm.heightAt, ceilingAt: realm.theme.roofAt });
       if (at === 'sanctum') this.player.place(SANCTUM_SITE.x, SANCTUM_SITE.z + SANCTUM_DOOR_Z[id] + 4, 0);
-      else this.player.place(realm.arrive.x, realm.arrive.z - 6, 0); // a few steps in, facing north, portal behind
+      else this.player.place(realm.arrive.x, realm.arrive.z - 14, 0); // out in front of the mouth, facing the land, with room for the camera before the cliffs
       this.particles = realm.fx;
       this.magic.setArena(realm.scene, realm.fx, realm.arena, realm.theme.enemy);
       this.setRenderScene(realm.scene);

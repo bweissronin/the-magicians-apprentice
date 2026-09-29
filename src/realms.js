@@ -30,7 +30,9 @@ const shadowAll = (o) => { o.traverse((m) => { if (m.isMesh) { m.castShadow = tr
 const SITE_R = 16;
 const siteDist = (x, z) => Math.hypot(x - SANCTUM_SITE.x, z - SANCTUM_SITE.z);
 const siteBlend = (x, z) => 1 - smoothstep(SITE_R, SITE_R + 5, siteDist(x, z));
-const reserved = (x, z, pad = 0) => siteDist(x, z) < SITE_R + pad || Math.hypot(x - PLANS_POS.x, z - PLANS_POS.z) < 4 + pad;
+// Kept clear by every builder: the sanctum site, its cornerstone, and the way home at the rim with
+// the ground in front of it where you arrive.
+const reserved = (x, z, pad = 0) => siteDist(x, z) < SITE_R + pad || Math.hypot(x - PLANS_POS.x, z - PLANS_POS.z) < 4 + pad || (Math.abs(x - ARRIVE.x) < 20 + pad && z > ARRIVE.z - 24 - pad);
 
 // ---------------------------------------------------------------- shared scaffolding
 function skyDome({ top, horizon, stars = 0, aurora = 0, glow = '#000000' }) {
@@ -769,7 +771,7 @@ export class Realms {
       arena: {
         radius: R - 2,
         height: theme.heightAt,
-        safe: (p) => Math.hypot(p.x - ARRIVE.x, p.z - ARRIVE.z) < 9, // the portal is a sanctuary
+        safe: (p) => Math.hypot(p.x - ARRIVE.x, p.z - (ARRIVE.z - 9)) < 12, // the way home and where you arrive are a sanctuary
         spawn: (pp) => {
           const s = theme.spawnAt?.(pp);
           if (s && Math.hypot(s.x - pp.x, s.z - pp.z) > 10) return s;
