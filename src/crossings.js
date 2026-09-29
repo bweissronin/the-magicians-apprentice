@@ -266,7 +266,7 @@ function buildMouth(id, color, rnd, { flat = false, ground, hill = false } = {})
     for (const side of [-1, 1]) root.add(mesh(new RoundedBoxGeometry(1.0, ARCH_H + 0.6, 1.0, 2, 0.14).translate(side * (TUNNEL_HALF + 0.3), (ARCH_H + 0.6) / 2, -0.2), stone));
     root.add(mesh(new RoundedBoxGeometry(TUNNEL_HALF * 2 + 2.4, 0.85, 1.2, 2, 0.16).translate(0, ARCH_H + 0.9, -0.2), stone));
     const steps = new THREE.InstancedMesh(new THREE.BoxGeometry(TUNNEL_HALF * 2 - 0.3, 0.16, 0.9), stone, 10), m = new THREE.Matrix4();
-    for (let i = 0; i < 10; i++) steps.setMatrixAt(i, m.makeTranslation(0, inside(0.05, 1 + i * 1.4), 1 + i * 1.4));
+    for (let i = 0; i < 10; i++) steps.setMatrixAt(i, m.makeTranslation(0, inside(flat ? -0.05 : 0.05, 1 + i * 1.4), 1 + i * 1.4)); // flush with a level floor
     steps.receiveShadow = true; root.add(steps);
     // The gate: two leaves of bars. Open, they stand swung back inside; locked, shut and chained.
     const leaf = () => {

@@ -667,14 +667,18 @@ export class Realms {
     // Static props are gathered into 48 m chunks and merged per material, so a realm the size
     // of the valley costs a few draws per chunk; far chunks are hidden (the fog hides them anyway).
     const chunks = new Map();
+    let early = []; // props the realm's own builder places, before the wider land reshapes the ground
     const add = (obj, radius) => {
+      if (early) early.push(obj);
       const key = `${Math.floor(obj.position.x / 48)},${Math.floor(obj.position.z / 48)}`;
       let c = chunks.get(key);
       if (!c) { c = new THREE.Group(); c.userData.cx = (Math.floor(obj.position.x / 48) + 0.5) * 48; c.userData.cz = (Math.floor(obj.position.z / 48) + 0.5) * 48; chunks.set(key, c); scene.add(c); }
       c.add(obj);
       if (radius > 0) colliders.push({ x: obj.position.x, z: obj.position.z, radius });
     };
+    const before = new Set(scene.children);
     const theme = BUILDERS[id](rand, add, api);
+    const direct = scene.children.filter((o) => !before.has(o) && !o.userData.cx);
     // The wider land: hills, landmarks and paths layered over the realm's own terrain.
     const land = new Land(id, theme);
     const baseH = theme.heightAt, baseC = theme.colorAt;
@@ -691,6 +695,19 @@ export class Realms {
       return lerp(lerp(h, mouthY, apron), mouthY, slot);
     };
     theme.colorAt = (c, x, z, h, up) => { baseC(c, x, z, h, up); land.color(c, x, z, h, up); };
+    // The land's hills rise and fall by metres: set the builder's props back down on the ground
+    // they now stand on (things standing near the old ground only; roofs, sheets and hanging
+    // stalactites stay where they are).
+    const box = new THREE.Box3();
+    for (const o of [...early, ...direct]) {
+      const { x, z } = o.position, b0 = baseH(x, z), dy = theme.heightAt(x, z) - b0;
+      if (Math.abs(dy) < 0.02) continue;
+      if (o.isLight) { if (o.position.y - b0 < 6) o.position.y += dy; continue; }
+      box.setFromObject(o);
+      if (box.isEmpty() || box.max.x - box.min.x > 14 || box.max.z - box.min.z > 14) continue;
+      if (o.position.y - b0 > -1.2 && o.position.y - b0 < 3.5) o.position.y += dy;
+    }
+    early = null; // later props are placed on the final ground already
     const baseIce = theme.iceAt, baseTraction = theme.traction;
     if (baseIce || land.def.ice) theme.traction = (x, z) => (baseIce?.(x, z) || land.iceAt(x, z) ? 0.12 : 1);
     api.height = (x, z) => theme.heightAt(x, z);
