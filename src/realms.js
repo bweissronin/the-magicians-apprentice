@@ -4,6 +4,7 @@ import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.j
 import { Particles } from './particles.js';
 import { clay } from './style.js';
 import { fbm, smoothstep, lerp, mulberry32 } from './util.js';
+import { TUNNEL_LEN, TUNNEL_HALF } from './world.js';
 import { runeCircleTexture } from './textures.js';
 import { SCHOOLS, NODE_TYPES, SANCTUMS, THRESHOLDS } from './data.js';
 import { Sanctum, SANCTUM_SITE, PLANS_POS, SANCTUM_DOOR_Z } from './sanctums.js';
@@ -18,7 +19,10 @@ import { buildDeep, veinNode } from './deep.js';
 // function, bounds and an "arena" description so those systems work unchanged.
 
 const R = WORLD_R;       // playable radius: as large as the valley
-const ARRIVE = { x: 0, z: 40 };
+// Where you arrive: just inside the cliffs that ring the realm, with the way home cut into them
+// behind you (toward the valley's side of the world), so you step out at the land's edge.
+const ARRIVE = { x: 0, z: R - 30 };
+const MOUTH_Z = ARRIVE.z + 5;
 const rbox = (w, h, d, r = 0.1) => new RoundedBoxGeometry(w, h, d, 3, Math.min(r, w / 2, h / 2, d / 2));
 const shadowAll = (o) => { o.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } }); return o; };
 // Every realm keeps a flat, clear site at the north end for its sanctum, and a clear spot for
@@ -674,7 +678,18 @@ export class Realms {
     // The wider land: hills, landmarks and paths layered over the realm's own terrain.
     const land = new Land(id, theme);
     const baseH = theme.heightAt, baseC = theme.colorAt;
-    theme.heightAt = (x, z) => land.height(baseH(x, z), x, z);
+    const landH = (x, z) => land.height(baseH(x, z), x, z);
+    // The way home is cut into the ring of cliffs: a level apron in front of it and a slot, as wide
+    // as the tunnel, running back into the rock (the tunnel mesh roofs it; see crossings.js).
+    const mouthY = landH(ARRIVE.x, ARRIVE.z);
+    theme.heightAt = (x, z) => {
+      const h = landH(x, z), lx = Math.abs(x - ARRIVE.x), lz = z - MOUTH_Z;
+      if (lz < -24 || lz > TUNNEL_LEN + 3 || lx > 16) return h;
+      // Level near the mouth, easing back into the land over the last ~14 m.
+      const apron = (1 - smoothstep(10, 16, lx)) * smoothstep(-24, -10, lz) * (1 - smoothstep(0.5, 3, lz));
+      const slot = lz > -0.5 ? 1 - smoothstep(TUNNEL_HALF, TUNNEL_HALF + 1.4, lx) : 0;
+      return lerp(lerp(h, mouthY, apron), mouthY, slot);
+    };
     theme.colorAt = (c, x, z, h, up) => { baseC(c, x, z, h, up); land.color(c, x, z, h, up); };
     const baseIce = theme.iceAt, baseTraction = theme.traction;
     if (baseIce || land.def.ice) theme.traction = (x, z) => (baseIce?.(x, z) || land.iceAt(x, z) ? 0.12 : 1);
@@ -697,8 +712,8 @@ export class Realms {
     }
     // The way home: the same mouth you came through in the valley (a mine, a cleft, a cave, a
     // barrow), standing behind where you arrive with its hill around it.
-    const exit = realmThreshold(id, def.color);
-    exit.position.set(ARRIVE.x, theme.heightAt(ARRIVE.x, ARRIVE.z + 5), ARRIVE.z + 5);
+    const exit = realmThreshold(id, def.color, (lx, lz) => theme.heightAt(ARRIVE.x + lx, MOUTH_Z + lz) - mouthY);
+    exit.position.set(ARRIVE.x, mouthY, MOUTH_Z);
     scene.add(exit);
     for (const c of exit.userData.cols) colliders.push({ x: ARRIVE.x + c.x, z: ARRIVE.z + 5 + c.z, radius: c.radius });
     // Puzzle altars.
@@ -717,7 +732,7 @@ export class Realms {
       scene, rand, add, heightAt: theme.heightAt, fx, color: def.color,
       collide: (x, z, radius) => colliders.push({ x, z, radius }),
       aoHide: (o) => this.game.aoHidden.push(o),
-      reserved: (x, z, pad) => reserved(x, z, pad) || (Math.abs(x - ARRIVE.x) < 17 && z > ARRIVE.z - 1 && z < ARRIVE.z + 27) || ALTAR_SPOTS.some((p) => Math.hypot(x - p.x, z - p.z) < 3.5),
+      reserved: (x, z, pad) => reserved(x, z, pad) || (Math.abs(x - ARRIVE.x) < 24 && z > ARRIVE.z - 10) || ALTAR_SPOTS.some((p) => Math.hypot(x - p.x, z - p.z) < 3.5),
       hazardHit: api.hazardHit,
     });
     if (theme.graves) theme.graves.push(...land.ctx.graves);
@@ -786,7 +801,7 @@ export class Realms {
       if (spots.length >= 64) { const L = land.landmarks[spots.length % 4], a = rand() * Math.PI * 2, r = L.r + 3 + rand() * 10; x = L.x + Math.cos(a) * r; z = L.z + Math.sin(a) * r; }
       else { const a = rand() * Math.PI * 2, r = want(spots.length); x = Math.cos(a) * r; z = Math.sin(a) * r; }
       if (Math.hypot(x, z) > R - 26) continue;
-      if (reserved(x, z, 3) || Math.hypot(x - ARRIVE.x, z - ARRIVE.z) < 10 || land.hazard(x, z) || land.pathDist(x, z) < 3) continue;
+      if (reserved(x, z, 3) || (Math.abs(x - ARRIVE.x) < 24 && z > ARRIVE.z - 16) || land.hazard(x, z) || land.pathDist(x, z) < 3) continue;
       if (theme.lavaAt && [0, 1.5, -1.5, 3, -3].some((d) => theme.lavaAt(x + d, z) || theme.lavaAt(x, z + d))) continue;
       if (ALTAR_SPOTS.some((p) => Math.hypot(x - p.x, z - p.z) < 6)) continue;
       if ([...colliders, ...spots].some((c) => Math.hypot(c.x - x, c.z - z) < (c.radius || 2) + 2.2)) continue;

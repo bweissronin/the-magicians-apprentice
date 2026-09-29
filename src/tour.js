@@ -91,7 +91,8 @@ function behind(player) {
 export function realmTour(game, realm) {
   const h = (x, z) => realm.heightAt(x, z), A = realm.arrive, hub = new THREE.Vector3(0, h(0, 0), 0);
   const stops = [];
-  stops.push({ pos: new THREE.Vector3(A.x, h(A.x, A.z) + 55, A.z + 75), look: new THREE.Vector3(0, hub.y + 4, -10),
+  // From high over the way in, at the realm's edge, looking out across the land to its heart.
+  stops.push({ pos: new THREE.Vector3(A.x, h(A.x, A.z) + 48, A.z + 8), look: new THREE.Vector3(0, hub.y + 4, -10),
     title: realm.def.realm, sub: `${realm.def.glyph} ${realm.def.name} · first visit`, text: realm.def.blurb });
   const sc = realm.sanctum.world;
   stops.push({ pos: new THREE.Vector3(sc.x + 26, sc.y + 26, sc.z + 30), look: new THREE.Vector3(sc.x, sc.y + 5, sc.z),

@@ -730,7 +730,8 @@ export class Land {
       return { ...L, ex: L.x + Math.sin(a) * er, ez: L.z + Math.cos(a) * er };
     });
     this.life = LIFE[id] || this.def.life || {};
-    this.paths = [...this.landmarks.map((L, i) => makePath(L.x, L.z, i * 2.3 + id.length)), ...(this.life.roads?.() || [])];
+    // A road to every landmark, and one out to the way home in the cliffs at the realm's edge.
+    this.paths = [...this.landmarks.map((L, i) => makePath(L.x, L.z, i * 2.3 + id.length)), makePath(0, WORLD_R - 38, 5.1), ...(this.life.roads?.() || [])];
     this.bridges = []; // auto-built where paths cross the realm's own lava
     this.tmp = new THREE.Color();
   }
