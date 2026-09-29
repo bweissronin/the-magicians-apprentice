@@ -3,6 +3,7 @@ import { PLATEAU_H, heightAt } from './world.js';
 import { ALTAR_POS, TOWER_FLOORS } from './data.js';
 import { runeCircleTexture } from './textures.js';
 import { mergeStatic } from './merge.js';
+import { LightBank, lightsIn } from './lightbank.js';
 import { RoundedBoxGeometry } from 'three/addons/geometries/RoundedBoxGeometry.js';
 import { clay, addRim, stoneBlockTexture, shingleTexture, plankTexture, PALETTE } from './style.js';
 
@@ -243,6 +244,8 @@ const BUILDERS = {
   },
 };
 
+const LIGHTS = {}; // lights each floor carries (by index), counted once
+
 export class Tower {
   constructor(scene, particles) {
     this.scene = scene;
@@ -256,6 +259,7 @@ export class Tower {
     this.buildAltar();
     this.buildEntrance();
     this.ghost = null;
+    this.holdLights();
   }
 
   buildAltar() {
@@ -315,22 +319,41 @@ export class Tower {
     return BUILDERS[def.id]();
   }
 
-  // Instantly place floors (used on load).
+  // Instantly place floors (used on load), and hold room for the lights of the floors to come.
   setFloors(n) {
     for (let i = this.floors.length; i < n; i++) this.addFloor(i, false);
     this.refreshGhost();
+    this.holdLights();
   }
 
-  get hasEntrance() { return this.floors.length > 0; }
+  // Room for the lights of the floors still to come (see lightbank.js).
+  holdLights() {
+    this.bank ||= new LightBank(this.root);
+    let lights = 0;
+    for (let i = this.floors.length; i < TOWER_FLOORS.length; i++) lights += (LIGHTS[i] ??= lightsIn(this.makeFloor(i).group));
+    this.bank.hold(lights);
+  }
 
-  addFloor(index, animate = true) {
+  // Build a floor ready to place (so its shaders can be compiled before it appears).
+  prepareFloor(index) {
     const { group, height } = this.makeFloor(index);
     const ud = group.userData;
     [...(ud.spinners || []), ud.runes].forEach((o) => { if (o) o.userData.dynamic = true; });
     mergeStatic(group);
+    return { group, height };
+  }
+
+  get hasEntrance() { return this.floors.length > 0; }
+
+  addFloor(index, animate = true, prepared = null) {
+    const { group, height } = prepared || this.prepareFloor(index);
     group.position.y = this.top;
     this.root.add(group);
+    this.bank?.admit(group);
     const f = { group, height, base: this.top, index };
+    // Its full-size bounds in the world, for the camera to frame.
+    group.updateWorldMatrix(true, true);
+    f.box = new THREE.Box3().setFromObject(group);
     this.floors.push(f);
     this.top += height;
     if (animate) {

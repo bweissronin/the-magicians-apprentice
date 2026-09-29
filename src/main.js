@@ -410,35 +410,31 @@ class Game {
   buildNextFloor() {
     if (this.buildSchool) return this.buildSanctumStage(this.buildSchool);
     const s = this.state, f = s.nextFloor;
-    if (!f || s.level < f.level || !s.canAfford(f.cost)) return;
+    if (this.raising || !f || s.level < f.level || !s.canAfford(f.cost)) return;
     s.spend(f.cost);
     const idx = s.floors;
     s.floors++;
     $('build').classList.add('hidden');
     this.mode = 'play';
-    this.tower.addFloor(idx, true);
-    this.audio.play('build');
-    this.player.shake = 1.2;
-    this.ui.banner(f.name, `Floor ${idx + 1} raised`, f.lore, 4500);
-    // Short orbit around the tower to show off the new floor.
-    this.startCinematic(4.2, (t, cam) => {
-      const a = t * 1.4 + 0.6;
-      const h = this.tower.root.position.y + this.tower.top;
-      const r = 26 + h * 0.6;
-      cam.position.set(Math.sin(a) * r, h * 0.6 + 6, Math.cos(a) * r);
-      cam.lookAt(0, h * 0.65, 0);
-    }, () => {
-      s.addXP(f.xp, `${f.name} raised`);
-      this.save();
-      this.checkAscension();
-      this.input.lock();
+    const prepared = this.tower.prepareFloor(idx);
+    this.warmUp(prepared.group, this.scene).then(() => {
+      const fl = this.tower.addFloor(idx, true, prepared);
+      this.audio.play('build');
+      this.player.shake = 1.2;
+      this.ui.banner(f.name, `Floor ${idx + 1} raised`, f.lore, 4500);
+      this.frameRaise(fl.box, this.tower.root.position, 4.2, { hide: this.tower.ghost }, () => {
+        s.addXP(f.xp, `${f.name} raised`);
+        this.save();
+        this.checkAscension();
+        this.input.lock();
+      });
     });
   }
 
   // Raise the next stage of a school's sanctum (only from inside its realm).
   buildSanctumStage(id) {
     const s = this.state, st = s.nextSanctumStage(id), realm = this.realm;
-    if (!st || !realm || realm.id !== id || s.mastery(id) < st.rank || !s.canAfford(st.cost)) return;
+    if (this.raising || !st || !realm || realm.id !== id || s.mastery(id) < st.rank || !s.canAfford(st.cost)) return;
     if (st.guardian && !s.guardians.includes(st.guardian)) return;
     const def = SCHOOLS.find((d) => d.id === id), sanc = SANCTUMS[id];
     s.spend(st.cost);
@@ -446,21 +442,60 @@ class Game {
     s.sanctums[id]++;
     $('build').classList.add('hidden');
     this.mode = 'play';
-    realm.sanctum.addStage(idx, true);
-    this.audio.play('build');
-    this.player.shake = 1.2;
-    this.ui.banner(st.name, `${sanc.name} · stage ${idx + 1} of ${sanc.stages.length}`, st.lore, 4500);
-    const c = realm.sanctum.world, top = realm.sanctum.top;
-    this.startCinematic(4.6, (t, cam) => {
-      const a = t * 0.9 + 0.5, r = 26 + top * 0.55;
-      cam.position.set(c.x + Math.sin(a) * r, c.y + top * 0.55 + 6, c.z + Math.cos(a) * r);
-      cam.lookAt(c.x, c.y + top * 0.5, c.z);
-    }, () => {
-      s.addXP(st.xp, `${st.name} raised`);
-      if (s.sanctumComplete(id)) this.completeSanctum(id, def, sanc);
-      this.save();
-      this.input.lock();
+    const prepared = realm.sanctum.prepareStage(idx);
+    this.warmUp(prepared.group, realm.scene).then(() => {
+      if (this.realm !== realm) return; // left the realm meanwhile: it appears when you're back
+      const stage = realm.sanctum.addStage(idx, true, prepared);
+      this.audio.play('build');
+      this.player.shake = 1.2;
+      this.ui.banner(st.name, `${sanc.name} · stage ${idx + 1} of ${sanc.stages.length}`, st.lore, 4500);
+      this.frameRaise(stage.box, realm.sanctum.world, 4.6, { front: new THREE.Vector3(0, 0, 1), hide: realm.sanctum.ghost }, () => {
+        s.addXP(st.xp, `${st.name} raised`);
+        if (s.sanctumComplete(id)) this.completeSanctum(id, def, sanc);
+        this.save();
+        this.input.lock();
+      });
     });
+  }
+
+  // Compile a new part's shaders before it appears, so raising it never stalls a frame. Its own
+  // lights sit out the compile: the scene's light bank already holds their place (lightbank.js).
+  async warmUp(group, scene) {
+    this.raising = true;
+    // Hold the camera still from the click until the raise shot takes over (a beat, at most).
+    this.startCinematic(1e9, () => {});
+    const lights = [];
+    group.traverse((o) => { if (o.isLight) { lights.push([o, o.visible]); o.visible = false; } });
+    try { await this.renderer.compileAsync(group, this.camera, scene); } catch { /* it compiles on first draw instead */ }
+    lights.forEach(([o, v]) => { o.visible = v; });
+    this.raising = false;
+  }
+
+  // Show off a newly raised part: ease from wherever the camera is to a view that holds all of it,
+  // then drift a little across it so it reads in the round. It's seen from the structure's front
+  // (a sanctum's door; for the tower, where you're standing), leaning up to ~50° toward the side
+  // the part stands out on. The ghost of the next part steps aside for the shot.
+  frameRaise(box, centre, duration, { front = null, hide = null } = {}, done) {
+    const cam = this.camera, c = box.getCenter(new THREE.Vector3()), size = box.getSize(new THREE.Vector3());
+    const r = Math.max(4, size.length() / 2);
+    const vfov = THREE.MathUtils.degToRad(cam.fov), hfov = 2 * Math.atan(Math.tan(vfov / 2) * cam.aspect);
+    const dist = (r / Math.sin(Math.min(vfov, hfov) / 2)) * 1.08;
+    const f = front || cam.position.clone().sub(c).setY(0);
+    const aFront = Math.atan2(f.x, f.z), out = new THREE.Vector3(c.x - centre.x, 0, c.z - centre.z);
+    const lean = out.length() > 3 ? THREE.MathUtils.clamp(Math.atan2(Math.sin(Math.atan2(out.x, out.z) - aFront), Math.cos(Math.atan2(out.x, out.z) - aFront)), -0.9, 0.9) : 0;
+    const a0 = aFront + lean, elev = 0.3;
+    const start = cam.position.clone(), look0 = start.clone().add(cam.getWorldDirection(new THREE.Vector3()).multiplyScalar(start.distanceTo(c)));
+    const ground = this.realm ? this.realm.heightAt : heightAt;
+    const want = new THREE.Vector3(), look = new THREE.Vector3();
+    if (hide) hide.visible = false;
+    this.startCinematic(duration, (t, cm) => {
+      const k = Math.min(1, t / 1.1), e = k * k * (3 - 2 * k);
+      const a = a0 - 0.22 + (t / duration) * 0.44;
+      want.set(Math.sin(a) * Math.cos(elev), Math.sin(elev), Math.cos(a) * Math.cos(elev)).multiplyScalar(dist).add(c);
+      want.y = Math.max(want.y, ground(want.x, want.z) + 2);
+      cm.position.copy(start).lerp(want, e);
+      cm.lookAt(look.copy(look0).lerp(c, e));
+    }, () => { if (hide) hide.visible = true; done?.(); });
   }
 
   completeSanctum(id, def, sanc) {

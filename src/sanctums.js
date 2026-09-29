@@ -4,6 +4,7 @@ import { clay, stoneBlockTexture, shingleTexture } from './style.js';
 import { runeCircleTexture } from './textures.js';
 import { prop } from './assets.js';
 import { mergeStatic } from './merge.js';
+import { LightBank } from './lightbank.js';
 import { mulberry32, fbm } from './util.js';
 import { SANCTUMS } from './data.js';
 
@@ -311,6 +312,23 @@ export class Sanctum {
     for (let i = this.stages.length; i < n; i++) this.addStage(i, false);
     this.refreshGhost();
     this.refreshRuin();
+    // Room for the lights of the stages still to come (see lightbank.js).
+    this.bank ||= new LightBank(this.root);
+    let lights = 0;
+    for (let i = this.stages.length; i < this.builders.length; i++) lights += this.make(i, false).lights.length;
+    this.bank.hold(lights);
+  }
+
+  // Build a stage ready to place (so its shaders can be compiled before it appears).
+  prepareStage(i) {
+    const built = this.make(i, true);
+    const g = built.group;
+    shadowAll(g);
+    const rigid = [];
+    g.traverse((o) => { if (o.userData.rigid) rigid.push(o); });
+    rigid.forEach((o) => mergeStatic(o));
+    mergeStatic(g);
+    return built;
   }
 
   // Before the first stage, the site holds the rubble of Aldric's fallen tower.
@@ -327,17 +345,16 @@ export class Sanctum {
     this.ruin = g; this.root.add(g);
   }
 
-  addStage(i, animate = true) {
-    const built = this.make(i, true);
+  addStage(i, animate = true, prepared = null) {
+    const built = prepared || this.prepareStage(i);
     const g = built.group;
-    shadowAll(g);
-    const rigid = [];
-    g.traverse((o) => { if (o.userData.rigid) rigid.push(o); });
-    rigid.forEach((o) => mergeStatic(o));
-    mergeStatic(g);
     this.root.add(g);
+    this.bank?.admit(g);
     this.hideFromAO(g);
     const st = { group: g, top: built.top, ticks: built.ticks, index: i };
+    // Its full-size bounds in the world, for the camera to frame.
+    g.updateWorldMatrix(true, true);
+    st.box = new THREE.Box3().setFromObject(g);
     this.stages.push(st);
     if (animate) {
       g.scale.setScalar(0.001);
