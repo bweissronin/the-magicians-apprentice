@@ -398,6 +398,15 @@ export class Sanctum {
     });
   }
 
+  // Highest walkable sanctum surface under (x, z), however high (for ledges: see player.js).
+  solidAt(x, z) {
+    if (!this.surfaces.length) return -Infinity;
+    const o = this.root.position;
+    let best = -Infinity;
+    for (const fn of this.surfaces) best = Math.max(best, fn(x - o.x, z - o.z));
+    return best === -Infinity ? best : best + o.y;
+  }
+
   // Highest walkable sanctum surface under (x, z) that the player can step onto from height y.
   surfaceAt(x, z, y) {
     if (!this.surfaces.length) return -Infinity;
@@ -622,6 +631,9 @@ function necroNave(k) {
     st.position.set(0, floorY - 0.15 - i * 0.3, front + 0.95 + i * 0.95); g.add(st);
   }
   for (const s of [-1, 1]) { const c = candleCluster(rand, 6, 0.8, flameM); c.position.set(s * 1.7, floorY, front + 1.1); g.add(c); }
+  // The plinth and the steps are things you stand on (the plinth is a ledge: see player.js).
+  k.surface((x, z) => (Math.abs(x) < 4.9 && z > zc - (L + 1.2) / 2 && z < zc + (L + 1.2) / 2 ? floorY : -Infinity));
+  k.surface((x, z) => { for (let i = 2; i >= 0; i--) { const cz = front + 0.95 + i * 0.95; if (Math.abs(x) < (4.2 - i * 0.2) / 2 && Math.abs(z - cz) < 0.5) return floorY - i * 0.3; } return -Infinity; });
   [2.5, -1, -4.5, -8, -11.5].forEach((z) => k.collide(0, z, 4.55));
   [1, -4.5, -10].forEach((z) => k.block(0, z, 5, 11));
   return { group: g, top: 13 };
@@ -868,7 +880,7 @@ function pyroFoundry(k) {
     col.position.set(x, h / 2 - 0.5, z); g.add(col);
     if (rim) k.collide(x, z, 0.6);
   }
-  k.surface((x, z) => (Math.hypot(x, z) < PYRO.plat ? PYRO.platY : -Infinity));
+  k.surface((x, z) => (Math.hypot(x, z) < PYRO.plat ? PYRO.platY + 0.1 : -Infinity)); // the columns' tops
   // Moat of liquid fire with a basalt curb, crossed by one bridge at the front.
   const moat = new THREE.Mesh(new THREE.RingGeometry(PYRO.plat + 0.1, 12.7, 80, 1), lavaMaterial('xz'));
   moat.rotation.x = -Math.PI / 2; moat.position.y = 0.1; g.add(moat);

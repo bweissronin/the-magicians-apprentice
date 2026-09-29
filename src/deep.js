@@ -449,12 +449,12 @@ export const DEEP = {
       const curve = new THREE.CatmullRomCurve3(pts);
       for (let i = 0; i <= 120; i++) {
         const p = curve.getPointAt(i / 120), tan = curve.getTangentAt(i / 120), a = Math.atan2(tan.x, tan.z), y = ctx.heightAt(p.x, p.z);
-        const tie = M(rbox(1.8, 0.14, 0.3, 0.03), wood, p.x, y + 0.07, p.z); tie.rotation.y = a; ctx.add(tie, 0);
+        const tie = M(rbox(1.8, 0.14, 0.3, 0.03), wood, p.x, y, p.z); // bedded halfway into the ground tie.rotation.y = a; ctx.add(tie, 0);
       }
       for (const s of [-0.6, 0.6]) {
         const rail = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(curve.getSpacedPoints(160).map((p, i, arr) => {
           const n = arr[Math.min(i + 1, arr.length - 1)], b = arr[Math.max(i - 1, 0)], a = Math.atan2(n.x - b.x, n.z - b.z);
-          return new THREE.Vector3(p.x + Math.cos(a) * s, ctx.heightAt(p.x, p.z) + 0.2, p.z - Math.sin(a) * s);
+          return new THREE.Vector3(p.x + Math.cos(a) * s, ctx.heightAt(p.x, p.z) + 0.12, p.z - Math.sin(a) * s);
         })), 200, 0.05, 4, false);
         ctx.scene.add(M(rail, iron));
       }

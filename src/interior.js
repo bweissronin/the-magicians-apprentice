@@ -1104,7 +1104,10 @@ export class Interior {
       : arrive === 'up' ? this.interactables.find((i) => i.kind === 'down')
       : this.interactables.find((i) => i.kind === 'up');
     const spot = target ? { x: target.x * 0.8, z: target.z * 0.8 } : { x: 0, z: 4 };
-    return { ...spot, radius: R, floorY: 0, name: rooms[floorIndex].name, floorDef: def.floorDef?.(floorIndex) };
+    // The stair and door pads are low discs you step onto, not paint on the floor.
+    const pads = this.pads.map((p) => ({ x: p.position.x, z: p.position.z }));
+    const heightAt = (x, z) => (pads.some((p) => Math.hypot(x - p.x, z - p.z) < 1.2) ? 0.14 : 0);
+    return { ...spot, radius: R, floorY: 0, heightAt, name: rooms[floorIndex].name, floorDef: def.floorDef?.(floorIndex) };
   }
 
   // ---------------- Keeping stairs, exits and stations clear ----------------
@@ -1226,11 +1229,21 @@ export class Interior {
       box.setFromObject(o);
       const h = box.max.y - box.min.y;
       if (h < 0.4) continue; // scrolls, book piles, mushrooms: step over them
-      const cx = (box.min.x + box.max.x) / 2, cz = (box.min.z + box.max.z) / 2;
-      let r = Math.min(1.5, Math.max(0.3, 0.42 * Math.max(box.max.x - box.min.x, box.max.z - box.min.z)));
-      const circleBox = (rad) => ({ min: { x: cx - rad, z: cz - rad }, max: { x: cx + rad, z: cz + rad } });
-      while (r > 0.2 && this.blocks(circleBox(r), zones)) r -= 0.05;
-      if (r > 0.2) this.colliders.push({ x: cx, z: cz, radius: r });
+      // Long pieces (benches, tables, shelves) get a row of circles along their length, so the ends
+      // are as solid as the middle.
+      const w = box.max.x - box.min.x, d = box.max.z - box.min.z, along = w >= d ? 'x' : 'z';
+      const long = Math.max(w, d), short = Math.min(w, d);
+      const r0 = long > short * 1.8 ? Math.min(1.5, Math.max(0.3, short * 0.5 + 0.05)) : Math.min(1.5, Math.max(0.3, 0.42 * long));
+      const n = long > short * 1.8 ? Math.max(1, Math.ceil((long - 2 * r0) / (r0 * 1.4)) + 1) : 1;
+      for (let i = 0; i < n; i++) {
+        const t = n === 1 ? 0.5 : i / (n - 1);
+        const cx = along === 'x' && n > 1 ? box.min.x + r0 + t * (w - 2 * r0) : (box.min.x + box.max.x) / 2;
+        const cz = along === 'z' && n > 1 ? box.min.z + r0 + t * (d - 2 * r0) : (box.min.z + box.max.z) / 2;
+        let r = r0;
+        const circleBox = (rad) => ({ min: { x: cx - rad, z: cz - rad }, max: { x: cx + rad, z: cz + rad } });
+        while (r > 0.2 && this.blocks(circleBox(r), zones)) r -= 0.05;
+        if (r > 0.2) this.colliders.push({ x: cx, z: cz, radius: r });
+      }
     }
   }
 

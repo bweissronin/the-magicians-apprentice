@@ -142,6 +142,15 @@ export class Player {
         next.z = c.z + (dz / d) * min;
       }
     }
+    // Ledges: a walkable top too high to step onto (above a step, below your head) is a wall, so
+    // you walk onto low platforms and bump into tall ones, never into them. Slide along the edge.
+    const STEP = 0.75, HEAD = 2.0;
+    const ledge = (x, z) => { const h = this.solidAt?.(x, z) ?? -Infinity; return h > this.pos.y + STEP && h < this.pos.y + HEAD; };
+    if (ledge(next.x, next.z)) {
+      if (!ledge(next.x, this.pos.z)) next.z = this.pos.z;
+      else if (!ledge(this.pos.x, next.z)) next.x = this.pos.x;
+      else { next.x = this.pos.x; next.z = this.pos.z; }
+    }
     if (this.indoor) {
       // Circular room wall.
       const rr = Math.hypot(next.x, next.z), lim = this.indoor.radius - 0.6;

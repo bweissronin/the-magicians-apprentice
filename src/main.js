@@ -158,7 +158,8 @@ class Game {
       const w = this.gates.inWay(p);
       return w && w.s > PASS_LIP - 7 ? 5.5 : null;
     };
-    this.player.surfaces = [(x, z) => this.shrines.surfaceAt(x, z), (x, z) => this.magic.pillarAt(x, z, this.player.pos.y), (x, z) => this.spellWorld.floeAt(x, z), (x, z) => this.gates.surfaceAt(x, z)];
+    this.player.solidAt = (x, z) => (this.inside ? -Infinity : this.realm ? this.realm.solidAt(x, z) : Math.max(this.shrines.surfaceAt(x, z), this.gates.surfaceAt(x, z), this.tower.surfaceAt(x, z)));
+    this.player.surfaces = [(x, z) => this.shrines.surfaceAt(x, z), (x, z) => this.magic.pillarAt(x, z, this.player.pos.y), (x, z) => this.spellWorld.floeAt(x, z), (x, z) => this.gates.surfaceAt(x, z), (x, z) => this.tower.surfaceAt(x, z)];
     this.player.cameraBlockers = () => (this.inside ? [] : this.realm ? this.realm.sanctum.blockers
       : this.state.floors && !this.inside ? [{ x: 0, z: 0, r: 8.4, top: this.tower.topWorld }] : []);
 

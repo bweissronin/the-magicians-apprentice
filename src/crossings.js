@@ -56,6 +56,13 @@ function puffMaterial() {
   });
 }
 
+// The top of a low elliptical dome (a snow drift) at local (x, z), or -Infinity off it.
+const domeAt = (domes, x, z) => {
+  let h = -Infinity;
+  for (const d of domes) { const u = (x - d.x) / d.rx, v = (z - d.z) / d.rz, q = 1 - u * u - v * v; if (q > 0) h = Math.max(h, d.h * Math.sqrt(q)); }
+  return h;
+};
+
 // ------------------------------------------------------------------ the mouths
 // Built in local space: the mouth at z = 0 facing -z (where you come from), the way running into
 // +z. `flat` (in a realm) keeps the floor level instead of sloping down into the mountain.
@@ -109,7 +116,7 @@ function rockFace(mat, rnd, { snow = null, hill = false } = {}) {
 // One realm's mouth: the rock, the inside, what's built at the entrance, and how it's barred.
 function buildMouth(id, color, rnd, { flat = false } = {}) {
   const root = new THREE.Group(), open = new THREE.Group(), locked = new THREE.Group();
-  const flames = [], glows = [], cols = [];
+  const flames = [], glows = [], cols = [], domes = [];
   root.add(open, locked);
   const col = (x, z, radius) => cols.push({ x, z, radius });
   const inside = (y, z) => y - (flat ? 0 : z * TUNNEL_DROP / TUNNEL_LEN); // floor height inside at depth z
@@ -177,6 +184,7 @@ function buildMouth(id, color, rnd, { flat = false } = {}) {
     // The lava channel beside the road, fed from inside the cleft.
     const lava = glow('#ff6a1c', 2.2); glows.push({ mat: lava, k: 2.2 });
     const ch = new THREE.Group(), x = TUNNEL_HALF + 1.1;
+    for (let z = -25.5; z <= -0.5; z += 0.9) col(x, z, 0.55); // the channel's curbs keep you out of it
     ch.add(mesh(new THREE.BoxGeometry(0.7, 0.06, 26).translate(x, 0.04, -13), lava, false));
     for (const dx of [-0.5, 0.5]) ch.add(mesh(new THREE.BoxGeometry(0.28, 0.22, 26).translate(x + dx, 0.1, -13), basalt));
     root.add(ch);
@@ -197,7 +205,11 @@ function buildMouth(id, color, rnd, { flat = false } = {}) {
     for (let k = 0; k < 11; k++) { const h = 0.5 + rnd() * 1.1; drips.push(new THREE.ConeGeometry(0.1 + rnd() * 0.08, h, 5).rotateX(Math.PI).translate(-2 + k * 0.4 + (rnd() - 0.5) * 0.2, ARCH_H - 0.1 - h / 2, -0.15)); }
     root.add(mesh(merge(...chunks, ...drips), ice, false));
     const drifts = [];
-    for (const side of [-1, 1]) for (let k = 0; k < 3; k++) drifts.push(new THREE.SphereGeometry(1.2 + rnd() * 0.8, 12, 7).scale(1, 0.32, 1.1).translate(side * (TUNNEL_HALF + 1.4 + k * 1.6), 0, -1.6 - rnd() * 3));
+    for (const side of [-1, 1]) for (let k = 0; k < 3; k++) {
+      const r = 1.2 + rnd() * 0.8, x = side * (TUNNEL_HALF + 1.4 + k * 1.6), z = -1.6 - rnd() * 3;
+      drifts.push(new THREE.SphereGeometry(r, 12, 7).scale(1, 0.32, 1.1).translate(x, 0, z));
+      domes.push({ x, z, rx: r, rz: r * 1.1, h: r * 0.32 }); // drifts are snow you walk up onto
+    }
     root.add(mesh(merge(...drifts), snow));
     // Frozen shut: a wall of thick ice filling the arch.
     const wall = new THREE.MeshStandardMaterial({ color: '#d6f2ff', emissive: '#6fc8ff', emissiveIntensity: 0.2, roughness: 0.05, transparent: true, opacity: 0.93, flatShading: true });
@@ -237,7 +249,7 @@ function buildMouth(id, color, rnd, { flat = false } = {}) {
       col(x, z, 0.4);
     }
   }
-  return { root, open, locked, flames, glows, cols };
+  return { root, open, locked, flames, glows, cols, domes };
 }
 
 // ------------------------------------------------------------------ the horizon
@@ -433,8 +445,19 @@ export class Crossings {
   }
 
   // ---------------------------------------------------------------- the player
-  // The floor is the terrain (world.js cuts the slot); nothing extra to stand on.
-  surfaceAt() { return -Infinity; }
+  // The floor is the terrain (world.js cuts the slot); what stands on it at a mouth (the ice
+  // cave's snow drifts) is walked over.
+  surfaceAt(x, z) {
+    for (const c of this.list) {
+      if (!c.mouth.domes.length) continue;
+      const a = REALM_PASSES[c.id].a, ux = Math.cos(a), uz = Math.sin(a);
+      const lz = x * ux + z * uz - PASS_LIP, lx = -(-x * uz + z * ux);
+      if (lz < -10 || lz > 2 || Math.abs(lx) > 14) continue;
+      const h = domeAt(c.mouth.domes, lx, lz);
+      if (h > -Infinity) return c.road + h;
+    }
+    return -Infinity;
+  }
 
   // If `p` is on the last stretch of road or inside a way in: which one, and how far along.
   inWay(p) {
@@ -493,6 +516,6 @@ export function realmThreshold(id, color) {
   const cols = [...m.cols];
   for (let z = -1.5; z <= TUNNEL_LEN; z += 0.9) for (const side of [-1, 1]) cols.push({ x: side * (TUNNEL_HALF + 0.35), z, radius: 0.5 });
   for (let x = TUNNEL_HALF + 0.9; x < 16; x += 1.2) for (const side of [-1, 1]) cols.push({ x: side * x, z: 0.4, radius: 0.7 });
-  m.root.userData = { flames: m.flames, glows: m.glows, cols };
+  m.root.userData = { flames: m.flames, glows: m.glows, cols, surfaceAt: (lx, lz) => domeAt(m.domes, lx, lz) };
   return m.root;
 }

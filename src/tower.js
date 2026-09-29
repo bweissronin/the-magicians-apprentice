@@ -290,6 +290,7 @@ export class Tower {
     const g = new THREE.Group();
     const x = 0, z = 9.6;
     g.position.set(x, heightAt(x, z) + 0.02, z);
+    this.padTop = { x, z, r: 1.3, y: heightAt(x, z) + 0.16 }; // you step onto the pad (see surfaceAt)
     const base = new THREE.Mesh(new THREE.CylinderGeometry(1.25, 1.35, 0.14, 32), clay('#d8ccb6', { key: 'padStone' }));
     base.position.y = 0.07; base.receiveShadow = true;
     const glow = new THREE.Mesh(new THREE.CircleGeometry(1.15, 40), new THREE.MeshBasicMaterial({
@@ -344,6 +345,9 @@ export class Tower {
   }
 
   get hasEntrance() { return this.floors.length > 0; }
+
+  // Walkable tops: the portal pad at the foot of the steps.
+  surfaceAt(x, z) { const p = this.padTop; return p && Math.hypot(x - p.x, z - p.z) < p.r ? p.y : -Infinity; }
 
   addFloor(index, animate = true, prepared = null) {
     const { group, height } = prepared || this.prepareFloor(index);

@@ -169,7 +169,7 @@ function buildCrypt(rand, add, api) {
         g.position.set(x, heightAt(x, z) - 0.05, z);
         g.rotation.set((rand() - 0.5) * 0.15, (rand() - 0.5) * 0.3, (rand() - 0.5) * 0.2);
         add(shadowAll(g), 0.6);
-        graves.push({ x, z: z + 1.2 });
+        graves.push({ x, z: z + 1.2, y: g.position.y });
       }
     }
   }
@@ -213,8 +213,18 @@ function buildCrypt(rand, add, api) {
     s.userData = { x: Math.cos(a) * r, z: Math.sin(a) * r, ph: rand() * 6 };
     api.scene.add(s); souls.push(s);
   }
+  // The burial mounds in front of the stones are gentle humps you walk over.
+  const mounds = graves.slice();
+  const extraAt = (x, z) => {
+    let h = -Infinity;
+    for (const m of mounds) {
+      const u = (x - m.x) / 0.81, v = (z - m.z) / 1.44, q = 1 - u * u - v * v;
+      if (q > 0) h = Math.max(h, m.y + 0.315 * Math.sqrt(q));
+    }
+    return h;
+  };
   return {
-    heightAt, colorAt,
+    heightAt, colorAt, extraAt,
     sky: { top: '#050d10', horizon: '#1e3a30', glow: '#1a5a38', stars: 1 },
     fog: ['#223a32', 0.016],
     light: { hemi: ['#b8f0d8', '#2a2438', 1.0], sun: ['#d0fff0', 2.2], sunDir: [-0.4, 0.8, -0.5] },
@@ -759,7 +769,13 @@ export class Realms {
     realm.aoHide = (o) => this.game.aoHidden.push(o);
     realm.sanctum = new Sanctum(realm);
     realm.sanctum.setStages(this.game.state.sanctumStage(id));
-    realm.heightAt = (x, z) => Math.max(theme.heightAt(x, z), land.surfaceAt(x, z), realm.sanctum.surfaceAt(x, z, this.game.player.pos.y), this.game.magic.pillarAt(x, z, this.game.player.pos.y));
+    // The stone discs under the puzzle altars and the cornerstone are low platforms you step onto.
+    const discs = [...altars.map((a) => a.group), corner].map((g) => ({ x: g.position.x, z: g.position.z, y: g.position.y + 0.4 }));
+    const discAt = (x, z) => { let h = -Infinity; for (const d of discs) if (Math.hypot(x - d.x, z - d.z) < 2.75) h = Math.max(h, d.y); return h; };
+    const exitY = exit.position.y, themeExtra = theme.extraAt || (() => -Infinity);
+    const extraAt = (x, z) => Math.max(themeExtra(x, z), exitY + exit.userData.surfaceAt(x - ARRIVE.x, z - ARRIVE.z - 5));
+    realm.solidAt = (x, z) => Math.max(land.surfaceAt(x, z), realm.sanctum.solidAt(x, z), discAt(x, z));
+    realm.heightAt = (x, z) => Math.max(theme.heightAt(x, z), land.surfaceAt(x, z), discAt(x, z), extraAt(x, z), realm.sanctum.surfaceAt(x, z, this.game.player.pos.y), this.game.magic.pillarAt(x, z, this.game.player.pos.y));
     realm.lavaAt = (x, z) => (!!baseLava?.(x, z) && !land.onBridge(x, z)) || land.lavaAt(x, z) || realm.sanctum.lavaAt(x, z);
     realm.slowAt = (x, z) => land.slowAt(x, z);
     // Harvest nodes scattered clear of the portal, altars, hazards and the sanctum site.

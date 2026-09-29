@@ -317,7 +317,7 @@ const CRYPT = {
         const x = cx + (rand() - 0.5) * 20, z = cz + (rand() - 0.5) * 20;
         if (!open(x, z, 1)) continue;
         const tr = deadTree(rand, 0.8 + rand() * 0.7, bark); tr.position.set(x, heightAt(x, z) - 0.2, z); tr.rotation.y = rand() * 6; add(shadowAll(tr), 0.5);
-        if (rand() < 0.6) { const b = M(new THREE.IcosahedronGeometry(0.8 + rand() * 0.6, 0), bramble, x + 1.5, heightAt(x + 1.5, z) + 0.3, z); b.scale.y = 0.6; add(b, 0); }
+        if (rand() < 0.6) { const br = 0.8 + rand() * 0.6, b = M(new THREE.IcosahedronGeometry(br, 0), bramble, x + 1.5, heightAt(x + 1.5, z) + 0.3, z); b.scale.y = 0.6; add(b, br * 0.9); }
       }
     }
     for (let i = 0; i < 60; i++) {
@@ -497,9 +497,9 @@ const CALDERA = {
         const deck = M(rbox(dx ? 46 : 3.6, 0.6, dz ? 46 : 3.6, 0.15), basalt, L.x, 0.45, L.z); add(shadowAll(deck), 0);
         for (let k = -3; k <= 3; k++) {
           if (k === 0) continue;
-          const arch = M(new THREE.TorusGeometry(2.4, 0.5, 6, 14, Math.PI), basaltD, L.x + dx * k * 6, 0.1, L.z + dz * k * 6);
+          const arch = M(new THREE.TorusGeometry(2.4, 0.5, 6, 14, Math.PI), basaltD, L.x + dx * k * 6, -0.33, L.z + dz * k * 6); // its crown tucks under the deck
           arch.rotation.y = dx ? 0 : Math.PI / 2; arch.scale.y = 0.35; add(arch, 0);
-          for (const s of [-1, 1]) add(shadowAll(M(rbox(0.3, 0.7, 0.3, 0.06), basaltD, L.x + dx * k * 6 + dz * s * 1.7, 1.1, L.z + dz * k * 6 + dx * s * 1.7)), 0);
+          for (const s of [-1, 1]) add(shadowAll(M(rbox(0.3, 0.7, 0.3, 0.06), basaltD, L.x + dx * k * 6 + dz * s * 1.7, 1.1, L.z + dz * k * 6 + dx * s * 1.7)), 0.3);
         }
       }
       const sal = new THREE.Group(), stoneM = clay('#6a5a52', { key: 'salStone' });
@@ -688,7 +688,12 @@ const GLACIER = {
       if (!open(x, z, 5)) continue;
       const g = new THREE.Group();
       for (let k = 0; k < 5; k++) { const rk = M(new THREE.DodecahedronGeometry(1.2 + rand() * 1.8, 0), rock, (k - 2) * 2.2, 0.6 + rand(), (rand() - 0.5) * 1.5); rk.rotation.set(rand() * 3, rand() * 3, 0); rk.scale.set(1, 1.3, 0.8); g.add(rk); const cap = M(new THREE.SphereGeometry(1.1, 10, 6, 0, TAU, 0, Math.PI / 2), snow, (k - 2) * 2.2, 1.8 + rand() * 0.8, 0); cap.scale.set(1, 0.4, 0.9); g.add(cap); }
-      g.position.set(x, heightAt(x, z), z); g.rotation.y = rand() * 6; add(shadowAll(g), 3.5);
+      g.position.set(x, heightAt(x, z), z); g.rotation.y = rand() * 6; add(shadowAll(g), 0);
+      // One collider per boulder, so the ends of the outcrop are as solid as the middle.
+      for (const rk of g.children) if (rk.geometry.type === 'DodecahedronGeometry') {
+        const lx = rk.position.x, lz = rk.position.z, c = Math.cos(g.rotation.y), sn = Math.sin(g.rotation.y);
+        ctx.collide(x + lx * c + lz * sn, z - lx * sn + lz * c, rk.geometry.parameters.radius * 0.95);
+      }
     }
     for (let i = 0; i < 130; i++) {
       const r = 60 + Math.sqrt(rand()) * 110, a = rand() * TAU, x = Math.cos(a) * r, z = Math.sin(a) * r;
@@ -772,6 +777,8 @@ export class Land {
   surfaceAt(x, z) {
     let h = this.def.surface ? this.def.surface(x, z) : -Infinity;
     if (this.onBridge(x, z)) h = Math.max(h, 0.5);
+    // The echo stones' base discs are low platforms you step onto.
+    for (const e of this.echoBases || []) if (Math.hypot(x - e.x, z - e.z) < 1.55) h = Math.max(h, e.y);
     return h;
   }
   lavaAt(x, z) { return !!this.def.lava?.(x, z); }
@@ -805,7 +812,11 @@ export class Land {
             const len = Math.hypot(x - run.x0, z - run.z0) + 5, cx = (x + run.x0) / 2, cz = (z + run.z0) / 2;
             this.bridges.push({ x: cx, z: cz, a: run.a, len });
             const deck = M(rbox(3.6, 0.6, len, 0.15), basalt, cx, 0.2, cz); deck.rotation.y = run.a; ctx.add(shadowAll(deck), 0);
-            for (const s of [-1, 1]) { const rail = M(rbox(0.3, 0.6, len, 0.08), basalt, cx + Math.cos(run.a) * s * 1.7, 0.7, cz - Math.sin(run.a) * s * 1.7); rail.rotation.y = run.a; ctx.add(rail, 0); }
+            for (const s of [-1, 1]) {
+              const rx = cx + Math.cos(run.a) * s * 1.7, rz = cz - Math.sin(run.a) * s * 1.7;
+              const rail = M(rbox(0.3, 0.6, len, 0.08), basalt, rx, 0.7, rz); rail.rotation.y = run.a; ctx.add(rail, 0);
+              for (let t = -len / 2 + 0.3; t <= len / 2 - 0.3; t += 0.5) ctx.collide(rx + Math.sin(run.a) * t, rz + Math.cos(run.a) * t, 0.2);
+            }
             run = null;
           }
         });
@@ -829,6 +840,7 @@ export class Land {
     this.echoes = this.landmarks.map((L) => {
       const st = echoStone(ctx.color);
       st.position.set(L.ex, ctx.heightAt(L.ex, L.ez), L.ez);
+      (this.echoBases ||= []).push({ x: L.ex, z: L.ez, y: st.position.y + 0.3 });
       st.rotation.y = Math.atan2(-L.ex, -L.ez);
       ctx.scene.add(st);
       ctx.collide(L.ex, L.ez, 0.9);
