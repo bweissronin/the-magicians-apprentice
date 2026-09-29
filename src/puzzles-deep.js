@@ -1,6 +1,6 @@
-// Puzzles for the Sundered Deep (Geomancy). Both are verified by exhaustive search at
-// generation time: the Boulder Run is BFS-solved over every boulder arrangement, and the
-// Strata Lock is checked to have exactly one alignment that joins the ore seam.
+// Puzzles for the Sundered Deep (Geomancy). The Boulder Run is BFS-solved over every boulder
+// arrangement at generation time; the Strata Lock is solvable by construction (one through-vein
+// per layer, pins only ever drag layers below).
 import { PuzzleUI } from './puzzles.js';
 
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -225,86 +225,66 @@ Object.assign(PuzzleUI.prototype, {
     render();
   },
 
-  // Strata Lock: slide wrapping layers of rock until the ore veins form one seam from the top
-  // marker to the bottom marker. Built from a real seam, padded with dead-end decoys and extra
-  // through-veins, and accepted only when exactly one alignment joins the seam.
+  // Strata Lock: slide wrapping layers of rock until one ore seam runs from the top marker to
+  // the bottom one. Every layer holds exactly one vein that goes all the way through it (bending
+  // left, right or straight down); the ore branching off it visibly tapers to a dead end, so the
+  // path is always readable. Some layers are pinned to the layer beneath by an iron staple:
+  // sliding a pinned layer drags that one too, so the order you work in matters. Working from the
+  // top down always succeeds (a layer's slides never disturb the layers above it). The seam
+  // lights from both markers, so you can watch the two ends converge.
   strata(difficulty, token, resetBtn) {
     const hard = difficulty > 1, L = hard ? 6 : 5, W = hard ? 7 : 6;
     const mod = (v) => ((v % W) + W) % W;
-    // A layer's segments: { a: top column, k: kink (-1/0/1), kind: 'full' | 'top' (dead end) | 'bot' (rises from the bottom) | 'fleck' }
-    const countSolutions = (layers, T, B) => {
-      let n = 0;
-      const go = (r, x) => { if (r === L) { if (x === B) n++; return; } for (const s of layers[r]) if (s.kind === 'full') go(r + 1, mod(x + s.k)); };
-      go(0, T);
-      return n;
-    };
-    let layers, T, B;
-    const extras = hard ? 4 : 2;
-    for (let tries = 0; tries < 2000; tries++) {
-      T = Math.floor(Math.random() * W);
-      layers = [];
-      let x = T;
-      for (let r = 0; r < L; r++) {
-        const k = pick([-1, -1, 0, 1, 1]);
-        layers.push([{ a: x, k, kind: 'full' }]);
-        x = mod(x + k);
-      }
-      B = x;
-      const tops = layers.map((l) => new Set(l.map((s) => s.a)));
-      const bots = layers.map((l) => new Set(l.map((s) => mod(s.a + s.k))));
-      const crosses = (r, a, k) => k && layers[r].some((s) => s.kind === 'full' && s.a === mod(a + k) && s.k === -k);
-      // Extra through-veins: different kink from the true seam in that layer (same kink = twin solution).
-      let placed = 0;
-      for (let guard = 0; placed < extras && guard < 60; guard++) {
-        const r = Math.floor(Math.random() * L), a = Math.floor(Math.random() * W), k = pick([-1, 0, 1]);
-        if (tops[r].has(a) || bots[r].has(mod(a + k)) || layers[r].some((s) => s.kind === 'full' && s.k === k) || crosses(r, a, k)) continue;
-        layers[r].push({ a, k, kind: 'full' }); tops[r].add(a); bots[r].add(mod(a + k)); placed++;
-      }
-      if (placed < extras || countSolutions(layers, T, B) !== 1) continue;
-      // Dead-end decoys: veins that fizzle out mid-rock, from above or below, plus loose flecks.
-      layers.forEach((l, r) => {
-        for (let a = 0; a < W; a++) {
-          if (!tops[r].has(a) && Math.random() < 0.4) { l.push({ a, k: pick([-1, 0, 1]), kind: 'top' }); tops[r].add(a); }
-          if (!bots[r].has(a) && Math.random() < 0.3) { l.push({ a, k: pick([-1, 0, 1]), kind: 'bot' }); bots[r].add(a); }
-        }
-        if (Math.random() < 0.5) l.push({ a: Math.floor(Math.random() * W), k: pick([-1, 1]), kind: 'fleck' });
-      });
-      break;
+    // The seam: top marker T, one vein per layer (top column a, bend k), bottom marker B.
+    const T = Math.floor(Math.random() * W);
+    const layers = [];
+    let x = T;
+    for (let r = 0; r < L; r++) {
+      const k = pick(hard ? [-1, -1, 0, 1, 1] : [-1, 0, 0, 1]);
+      layers.push({ a: Math.floor(Math.random() * W), k, sol: x }); // sol: where its top must sit
+      x = mod(x + k);
     }
-    const off = layers.map(() => 1 + Math.floor(Math.random() * (W - 1))); // solution is all-zero
-    const vis = off.slice(); // unbounded visual offset for smooth wrapping slides
-    const start = off.slice();
+    const B = x;
+    // Branches: ore forking off the vein partway down and tapering out in the rock.
+    layers.forEach((l) => { l.branches = Array.from({ length: hard ? 2 : 1 + (Math.random() < 0.5) }, () => ({ t: rnd(0.3, 0.7), dir: pick([-1, 1]), len: rnd(0.55, 0.95) })); });
+    // Pins: layer r drags layer r + 1 (never the last). Always solvable top-down.
+    const pins = layers.map((_, r) => r < L - 1 && Math.random() < (hard ? 0.45 : 0.3));
+    if (!pins.some(Boolean)) pins[Math.floor(Math.random() * (L - 1))] = true;
+    // Start: every layer off its mark, and the top layer never already in place.
+    const off = layers.map((l) => { let o; do { o = Math.floor(Math.random() * W); } while (mod(l.a + o) === l.sol); return o; });
+    const vis = off.slice(), start = off.slice();
     let moves = 0, sel = 0, done = false;
-    // QA hook: slide each layer home the short way round, through the real arrow buttons.
-    this.autoSolve = () => off.slice().forEach((o, r) => {
-      const [d, n] = o <= W / 2 ? [-1, o] : [1, W - o];
-      for (let i = 0; i < n; i++) this.board.querySelector(`.st-row[data-r="${r}"] [data-d="${d}"]`).click();
-    });
-    // Follow the seam down from the top marker; returns the lit segments and whether it lands on B.
-    const trace = () => {
-      const lit = []; let x = T, r = 0;
-      for (; r < L; r++) {
-        const i = layers[r].findIndex((s) => (s.kind === 'full' || s.kind === 'top') && mod(s.a + off[r]) === x);
-        if (i < 0) break;
-        lit.push([r, i]);
-        if (layers[r][i].kind === 'top') break;
-        x = mod(x + layers[r][i].k);
+    // QA hook: solve top-down through the real arrow buttons, the short way round.
+    this.autoSolve = () => {
+      for (let r = 0; r < L; r++) {
+        const need = mod(layers[r].sol - layers[r].a - off[r]);
+        const [d, n] = need <= W / 2 ? [1, need] : [-1, W - need];
+        for (let i = 0; i < n; i++) this.board.querySelector(`.st-row[data-r="${r}"] [data-d="${d}"]`).click();
       }
-      return { lit, joined: lit.filter(([r2, i]) => layers[r2][i].kind === 'full').length, win: r === L && x === B };
     };
-
+    const topOf = (r) => mod(layers[r].a + off[r]), botOf = (r) => mod(layers[r].a + off[r] + layers[r].k);
+    // The seam from both ends: down from T while each layer's vein meets it, and up from B.
+    const trace = () => {
+      const lit = new Set(); let x = T, r = 0;
+      for (; r < L && topOf(r) === x; r++) { lit.add(r); x = botOf(r); }
+      const win = r === L && x === B;
+      let y = B;
+      for (let q = L - 1; q >= 0 && botOf(q) === y; q--) { lit.add(q); y = topOf(q); }
+      return { lit, joined: lit.size, win };
+    };
     // ---- Art: each layer is a wrapping SVG strip, drawn 5× side by side and slid by transform ----
     const TW = hard ? 54 : 60, U = 100, SW = W * U;
     const tones = ['#8a6a4a', '#a88a64', '#6a5a4a', '#9a7a58', '#7a6048', '#b0926a'];
-    const vein = (s) => {
-      const x0 = s.a * U + U / 2, x1 = x0 + s.k * U, w = rnd(-10, 10);
-      if (s.kind === 'full') return s.k ? `M${x0} 0 C${x0} 46 ${x1} 54 ${x1} 100` : `M${x0} 0 C${x0 + 14 + w} 34 ${x0 - 14 - w} 66 ${x0} 100`;
-      if (s.kind === 'top') return `M${x0} 0 C${x0} 22 ${x0 + s.k * 30} 30 ${x0 + s.k * 38 + w} ${rnd(46, 58)}`;
-      if (s.kind === 'bot') return `M${x0} 100 C${x0} 78 ${x0 + s.k * 30} 70 ${x0 + s.k * 38 + w} ${rnd(42, 54)}`;
-      const y = rnd(34, 66); return `M${x0 - 22} ${y} Q${x0} ${y + s.k * 16} ${x0 + 24} ${y - s.k * 6}`;
+    // The through-vein: from the top of its column to the bottom of the column it bends to.
+    const veinPts = (l) => { const x0 = l.a * U + U / 2, x1 = x0 + l.k * U, w = rnd(-8, 8); return { x0, x1, w }; };
+    const vein = (l, p) => (l.k ? `M${p.x0} 0 C${p.x0} 46 ${p.x1} 54 ${p.x1} 100` : `M${p.x0} 0 C${p.x0 + 12 + p.w} 34 ${p.x0 - 12 - p.w} 66 ${p.x0} 100`);
+    // A branch: forks off the vein at height t and runs sideways, tapering to a knot of ore.
+    const branch = (l, p, b) => {
+      const y = b.t * 100, bx = l.k ? p.x0 + (p.x1 - p.x0) * (3 * b.t * b.t - 2 * b.t * b.t * b.t) : p.x0, ex = bx + b.dir * b.len * U, ey = y + rnd(-18, 18);
+      return { d: `M${bx.toFixed(0)} ${y.toFixed(0)} Q${((bx + ex) / 2).toFixed(0)} ${(y - 10).toFixed(0)} ${ex.toFixed(0)} ${ey.toFixed(0)}`, ex, ey };
     };
     const strip = (r) => {
-      const l = layers[r];
+      const l = layers[r], p = veinPts(l);
       let body = `<rect width="${SW}" height="${U}" fill="${tones[r % tones.length]}"/>`;
       // Periodic sediment lines (integer cycles per strip so the wrap is seamless) and speckle.
       for (let j = 0; j < 3; j++) {
@@ -315,7 +295,9 @@ Object.assign(PuzzleUI.prototype, {
       }
       for (let j = 0; j < W * 7; j++) body += `<circle cx="${rnd(0, SW).toFixed(0)}" cy="${rnd(6, 94).toFixed(0)}" r="${rnd(1, 3).toFixed(1)}" class="st-speck ${j % 3 ? '' : 'lt'}"/>`;
       for (let c = 1; c <= W; c++) body += `<path d="M${c * U + rnd(-4, 4)} 0 l${rnd(-5, 5)} 40 l${rnd(-4, 4)} 60" class="st-joint"/>`;
-      body += l.map((s, i) => { const d = vein(s); return `<g class="st-vein" data-s="${i}"><path d="${d}" class="bed"/><path d="${d}" class="glow"/><path d="${d}" class="core"/></g>`; }).join('');
+      body += l.branches.map((b) => { const q = branch(l, p, b); return `<g class="st-branch"><path d="${q.d}" class="bed"/><path d="${q.d}" class="core"/><circle cx="${q.ex.toFixed(0)}" cy="${q.ey.toFixed(0)}" r="6" class="knot"/></g>`; }).join('');
+      const d = vein(l, p);
+      body += `<g class="st-vein"><path d="${d}" class="bed"/><path d="${d}" class="glow"/><path d="${d}" class="core"/></g>`;
       // Every copy shares identical geometry: build once, stamp at -2W..+2W.
       return [-2, -1, 0, 1, 2].map((k) => `<g transform="translate(${k * SW} 0)">${body}</g>`).join('');
     };
@@ -323,12 +305,12 @@ Object.assign(PuzzleUI.prototype, {
     this.board.innerHTML = `
       <div class="strata" style="--w:${W};--tw:${TW}px">
         <span></span>${marker(T, false)}<span></span>
-        ${layers.map((_, r) => `<div class="st-row${r === 0 ? ' first' : ''}${r === L - 1 ? ' last' : ''}" data-r="${r}">
+        ${layers.map((_, r) => `<div class="st-row${r === 0 ? ' first' : ''}${r === L - 1 ? ' last' : ''}${pins[r] ? ' pinned' : ''}" data-r="${r}">
           <button class="btn sm" data-d="-1" aria-label="Slide layer ${r + 1} left">◀</button>
-          <div class="st-band"><svg viewBox="0 0 ${SW} ${U}" preserveAspectRatio="none"><g class="st-strip">${strip(r)}</g></svg></div>
+          <div class="st-band"><svg viewBox="0 0 ${SW} ${U}" preserveAspectRatio="none"><g class="st-strip">${strip(r)}</g></svg>${pins[r] ? '<i class="st-pin" title="Pinned: sliding this layer drags the one below"></i>' : ''}</div>
           <button class="btn sm" data-d="1" aria-label="Slide layer ${r + 1} right">▶</button></div>`).join('')}
         <span></span>${marker(B, true)}<span></span>
-        <p class="hint">Drag a layer or use its arrows. ↑/↓ picks a layer, ←/→ slides it.</p>
+        <p class="hint">Drag a layer or use its arrows (↑/↓ picks, ←/→ slides). Follow the one vein that runs right through each layer; the branches fizzle out. <b>Iron staples</b> pin a layer to the one below, so they slide together.</p>
       </div>`;
     const rows = [...this.board.querySelectorAll('.st-row')];
     const strips = rows.map((row) => row.querySelector('.st-strip'));
@@ -338,10 +320,9 @@ Object.assign(PuzzleUI.prototype, {
       strips.forEach((g, r) => { g.style.transform = `translateX(${vis[r] * U}px)`; });
       rows.forEach((row, r) => row.classList.toggle('sel', r === sel && !done));
       const { lit, joined, win } = trace();
-      this.board.querySelectorAll('.st-vein.lit').forEach((v) => v.classList.remove('lit'));
-      lit.forEach(([r, i]) => rows[r].querySelectorAll(`.st-vein[data-s="${i}"]`).forEach((v) => v.classList.add('lit')));
+      rows.forEach((row, r) => row.querySelectorAll('.st-vein').forEach((v) => v.classList.toggle('lit', lit.has(r))));
       bottomMark.classList.toggle('lit', win);
-      this.status.textContent = win ? '' : `${joined} / ${L} layers joined · ${moves} slides`;
+      this.status.textContent = win ? '' : `${joined} of ${L} layers on the seam · ${moves} slides`;
       if (joined > lastJoined && moves) this.audio.tone(330 + joined * 70, 0.35, { vol: 0.07, type: 'triangle' });
       lastJoined = joined;
       return win;
@@ -349,13 +330,18 @@ Object.assign(PuzzleUI.prototype, {
     const slide = (r, d) => {
       if (this.active !== token || done) return;
       sel = r;
-      // Keep the visual offset within the drawn copies: jump a whole strip-width invisibly first.
-      if (Math.abs(vis[r] + d) > W) {
-        const g = strips[r]; g.style.transition = 'none';
-        vis[r] -= Math.sign(vis[r]) * W; g.style.transform = `translateX(${vis[r] * U}px)`;
-        g.getBoundingClientRect(); g.style.transition = '';
+      // The layer and every layer pinned beneath it move together.
+      for (let q = r; q < L; q++) {
+        // Keep the visual offset within the drawn copies: jump a whole strip-width invisibly first.
+        if (Math.abs(vis[q] + d) > W) {
+          const g = strips[q]; g.style.transition = 'none';
+          vis[q] -= Math.sign(vis[q]) * W; g.style.transform = `translateX(${vis[q] * U}px)`;
+          g.getBoundingClientRect(); g.style.transition = '';
+        }
+        vis[q] += d; off[q] = mod(off[q] + d);
+        if (!pins[q]) break;
       }
-      vis[r] += d; off[r] = mod(off[r] + d); moves++;
+      moves++;
       this.audio.noise(0.22, { freq: 260, q: 0.8, vol: 0.14, type: 'lowpass', sweep: 0.7 });
       if (render()) {
         done = true;

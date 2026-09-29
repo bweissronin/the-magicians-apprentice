@@ -76,3 +76,15 @@
   .strata { --tw: 36px !important; grid-template-columns: 34px calc(var(--w) * var(--tw)) 34px; column-gap: 4px; }
   .st-row .btn.sm { width: 34px; height: 34px; }
 }
+/* Branches fork off the seam and taper out: thinner, duller ore ending in a knot, never lit. */
+.st-branch path { fill: none; stroke-linecap: round; }
+.st-branch .bed { stroke: rgba(40, 20, 6, 0.5); stroke-width: 11; }
+.st-branch .core { stroke: #a8743e; stroke-width: 5; }
+.st-branch .knot { fill: #8a5e32; stroke: rgba(40, 20, 6, 0.6); stroke-width: 3; }
+/* An iron staple across the seam between a pinned layer and the one below. */
+.st-pin { position: absolute; bottom: -7px; left: 50%; width: 30px; height: 14px; margin-left: -15px; z-index: 3; pointer-events: none;
+  border: 3px solid #cfd2d8; border-bottom: 0; border-radius: 3px 3px 0 0; box-shadow: 0 0 0 1px rgba(20, 12, 4, 0.8), 0 2px 6px rgba(0, 0, 0, 0.5);
+  background: linear-gradient(#cfd2d8, #cfd2d8) 50% 55% / 100% 3px no-repeat; }
+.st-row.pinned .st-band { overflow: visible; }
+.st-row.pinned .st-band svg { border-radius: inherit; overflow: hidden; }
+.strata .hint b { color: #e8ebf0; }

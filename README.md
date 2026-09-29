@@ -123,7 +123,7 @@ Missing reagents in any build plan link to the creature that carries them, and *
    | School | Realm | Puzzles | Hazard | Mastery spell |
    |---|---|---|---|---|
    | ☠ Necromancy | The Hollow Crypt | Soul Scales, Ossuary Seal | Bogs; spirits rising from graves | Soul Siphon |
-   | ⛰ Geomancy | **The Sundered Deep**: a cavern under a vaulted, stalactite-hung roof with a skylight, an underground river, crystal and fungus light | **Boulder Run** (boulders roll until stopped), **Strata Lock** (slide rock layers until the ore seam joins) | **Tremors**: dust falls, then a stalactite crashes onto the marked circle; an Earthen Stair gives cover | **Earthen Stair [T]**: raise stone pillars to climb, bridge lava and chasms, or wall off foes |
+   | ⛰ Geomancy | **The Sundered Deep**: a cavern under a vaulted, stalactite-hung roof with a skylight, an underground river, crystal and fungus light | **Boulder Run** (boulders roll until stopped), **Strata Lock** (slide rock layers until one ore seam runs marker to marker; each layer has a single through-vein, branches fizzle out, and stapled layers drag the one below) | **Tremors**: dust falls, then a stalactite crashes onto the marked circle; an Earthen Stair gives cover | **Earthen Stair [T]**: raise stone pillars to climb, bridge lava and chasms, or wall off foes |
    | ❄ Cryomancy | The Glacial Hollow | Frozen Lake, Crystal Prism | Ice, blizzards (wraiths hide in them without Spirit Sight) | Frostwalk |
    | 🔥 Pyromancy | The Ember Caldera | Flame Conduit, Ember Forge | Lava rivers and pools | Fireball |
 5. **Clear the haunts**: every landmark is haunted. Walking in wakes three waves and a named Dread, with one twist that uses the element rules:
