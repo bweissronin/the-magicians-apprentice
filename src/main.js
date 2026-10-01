@@ -109,6 +109,7 @@ class Game {
     this.particles = new Particles(this.scene);
     this.resources = new ResourceManager(this.scene, this.particles);
     this.tower = new Tower(this.scene, this.particles);
+    this.tower.getState = () => this.state;
     this.shrines = new Shrines(this.scene, this.particles);
     this.mentor = new Mentor(this.scene);
     this.props = new Props(this.scene);

@@ -634,7 +634,10 @@ function necroNave(k) {
   // The plinth and the steps are things you stand on (the plinth is a ledge: see player.js).
   k.surface((x, z) => (Math.abs(x) < 4.9 && z > zc - (L + 1.2) / 2 && z < zc + (L + 1.2) / 2 ? floorY : -Infinity));
   k.surface((x, z) => { for (let i = 2; i >= 0; i--) { const cz = front + 0.95 + i * 0.95; if (Math.abs(x) < (4.2 - i * 0.2) / 2 && Math.abs(z - cz) < 0.5) return floorY - i * 0.3; } return -Infinity; });
-  [2.5, -1, -4.5, -8, -11.5].forEach((z) => k.collide(0, z, 4.55));
+  // The front circle stops at the facade so the steps up to the door stay climbable; two smaller
+  // circles fill the front corners without reaching over the steps.
+  [0.6, -1, -4.5, -8, -11.5].forEach((z) => k.collide(0, z, 4.55));
+  for (const s of [-1, 1]) k.collide(s * 3, 3.4, 2);
   [1, -4.5, -10].forEach((z) => k.block(0, z, 5, 11));
   return { group: g, top: 13 };
 }
